@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Barndoor</string>
+    <string name="tagline">Control your Wi-Fi with ease</string>
+    <string name="hotspot_section">Hotspot</string>
+    <string name="filtering_section">Website Filtering (Guest-Visible)</string>
+    <string name="alerts_section">Security Alerts</string>
+    <string name="filtering_disclaimer">Guests connected to your hotspot will see a notice
+        that this network filters certain sites. Barndoor never redirects or
+        modifies content without the connecting device being informed.</string>
+</resources>
