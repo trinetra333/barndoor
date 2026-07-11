@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Needed to launch the system hotspot panel and read Wi-Fi state -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -8,6 +9,9 @@
     <!-- Needed for LocalOnlyHotspot API and nearby-device discovery -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="33" />
 
     <!-- Needed to show connected-device / filtering alerts -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

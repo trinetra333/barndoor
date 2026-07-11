@@ -1,9 +1,9 @@
 package com.barndoor.app
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.provider.Settings
 import android.util.Log
 
@@ -31,20 +31,36 @@ class HotspotManager(private val context: Context) {
 
     /** Opens the system hotspot settings screen so the user can toggle it themselves. */
     fun openSystemHotspotSettings() {
-        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            Intent(Settings.ACTION_WIFI_TETHER_SETTING)
+        // "android.settings.WIFI_TETHER_SETTINGS" has no public SDK constant
+        // (Settings.ACTION_WIFI_TETHER_SETTING is a hidden/internal API and
+        // won't compile against the public compileSdk), so it's referenced
+        // directly by its stable action string instead. This is the standard
+        // documented workaround other apps use to deep-link into this screen.
+        val tetherIntent = Intent("android.settings.WIFI_TETHER_SETTINGS")
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        if (tetherIntent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(tetherIntent)
         } else {
-            Intent(Settings.ACTION_WIRELESS_SETTINGS)
+            // Fallback for OEMs/Android versions that don't expose that screen.
+            context.startActivity(
+                Intent(Settings.ACTION_WIRELESS_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
     }
 
     /**
-     * Starts a LocalOnlyHotspot. Requires ACCESS_FINE_LOCATION to be granted.
-     * The OS will show its own persistent notification while this is active -
-     * that notification cannot be suppressed by this app, by design.
+     * Starts a LocalOnlyHotspot.
+     *
+     * Requires ACCESS_FINE_LOCATION on all supported versions, and
+     * additionally NEARBY_WIFI_DEVICES on API 33+. Both permissions are
+     * requested and checked by the caller (see
+     * MainActivity.requestRuntimePermissions / startHotspotFlow) before this
+     * method is ever invoked. The suppression below is safe because lint
+     * can't see across that call boundary, not because the check is skipped.
      */
+    @SuppressLint("MissingPermission")
     fun startLocalOnlyHotspot(
         onStarted: (ssid: String?, password: String?) -> Unit,
         onFailed: (reason: String) -> Unit
@@ -66,7 +82,7 @@ class HotspotManager(private val context: Context) {
                 }
             }, null)
         } catch (e: SecurityException) {
-            onFailed("Missing location permission: ${e.message}")
+            onFailed("Missing required permission: ${e.message}")
         }
     }
 
@@ -81,3 +97,4 @@ class HotspotManager(private val context: Context) {
         private const val TAG = "HotspotManager"
     }
 }
+

@@ -17,6 +17,12 @@ device joins.
   own traffic; it does not, and technically cannot via public Android APIs,
   intercept or redirect other people's phones just because they're using
   your hotspot.
+- **YouTube-only focus mode** — a one-tap allow-list mode that blocks every
+  domain except YouTube's (`youtube.com`, `youtu.be`, `googlevideo.com`,
+  `ytimg.com`) on this device. Same underlying filter, just inverted: instead
+  of blocking a list, it blocks everything *but* the list. Nothing is
+  redirected or spoofed — sites outside the allow-list simply fail to
+  resolve, same as the block-list mode.
 - **Security alerts** — best-effort notification when a new MAC address
   shows up in this device's ARP table, so you know who's around.
 
@@ -54,6 +60,16 @@ barndoor/
 ├── settings.gradle.kts
 └── gradle/wrapper/gradle-wrapper.properties
 ```
+
+## CI/CD (GitHub Actions)
+
+Two workflows live in `.github/workflows/`:
+
+- **`android-ci.yml`** — runs on every push/PR to `main`: lint → unit tests →
+  debug APK build, with the APK uploaded as a build artifact.
+- **`release.yml`** — runs when you push a tag like `v1.0.0`: builds an
+  unsigned release APK and uploads it. Add your keystore as repo secrets and
+  a signing step before shipping to the Play Store.
 
 ## Building
 

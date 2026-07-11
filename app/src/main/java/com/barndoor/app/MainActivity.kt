@@ -47,6 +47,18 @@ class MainActivity : AppCompatActivity() {
             saveFilterList()
         }
 
+        findViewById<Switch>(R.id.youtubeOnlySwitch).setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                startFilterService(
+                    domains = BarndoorVpnService.YOUTUBE_ONLY_DOMAINS,
+                    mode = BarndoorVpnService.Mode.ALLOW_LIST
+                )
+                Toast.makeText(this, "This device is now restricted to YouTube only", Toast.LENGTH_SHORT).show()
+            } else {
+                stopService(Intent(this, BarndoorVpnService::class.java))
+            }
+        }
+
         alertsSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 startService(Intent(this, DeviceMonitorService::class.java))
@@ -92,11 +104,19 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        startFilterService(domains, BarndoorVpnService.Mode.BLOCK_LIST)
+        Toast.makeText(this, "Filter list saved (${domains.size} domains blocked)", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Starts (or restarts) the on-device filter in either BLOCK_LIST mode
+     * (block just these domains) or ALLOW_LIST mode (block everything
+     * except these domains - used for the YouTube-only focus mode).
+     */
+    private fun startFilterService(domains: List<String>, mode: BarndoorVpnService.Mode) {
         val intent = Intent(this, BarndoorVpnService::class.java)
-        intent.putStringArrayListExtra(
-            BarndoorVpnService.EXTRA_BLOCKED_DOMAINS,
-            ArrayList(domains)
-        )
+        intent.putStringArrayListExtra(BarndoorVpnService.EXTRA_DOMAIN_LIST, ArrayList(domains))
+        intent.putExtra(BarndoorVpnService.EXTRA_MODE, mode.name)
 
         val prepareIntent = android.net.VpnService.prepare(this)
         if (prepareIntent != null) {
@@ -104,7 +124,6 @@ class MainActivity : AppCompatActivity() {
             pendingVpnIntent = intent
         } else {
             startService(intent)
-            Toast.makeText(this, "Filter list saved (${domains.size} domains)", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -122,6 +141,7 @@ class MainActivity : AppCompatActivity() {
         val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            permissions.add(Manifest.permission.NEARBY_WIFI_DEVICES)
         }
         ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERMISSION_REQUEST_CODE)
     }
