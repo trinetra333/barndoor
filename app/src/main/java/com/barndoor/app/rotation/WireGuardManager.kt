@@ -79,6 +79,7 @@ class WireGuardManager(context: Context) {
     suspend fun disconnect(): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             backend.setState(tunnel, Tunnel.State.DOWN, null)
+            Unit
         }
     }
 
