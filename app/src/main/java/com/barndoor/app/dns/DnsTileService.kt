@@ -49,7 +49,9 @@ class DnsTileService : TileService() {
             val server = repo.getSelectedServer()
             tile.state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
             tile.label = getString(R.string.tile_dns_label)
-            tile.subtitle = if (running && server != null) server.name else getString(R.string.tile_off)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                tile.subtitle = if (running && server != null) server.name else getString(R.string.tile_off)
+            }
             tile.updateTile()
         }
         if (delayed) {

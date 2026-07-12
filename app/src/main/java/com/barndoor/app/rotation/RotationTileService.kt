@@ -37,10 +37,12 @@ class RotationTileService : TileService() {
             val prefs = RotationPrefs(this)
             tile.state = if (prefs.running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
             tile.label = getString(R.string.tile_rotation_label)
-            tile.subtitle = when {
-                !prefs.isDeviceRegistered() -> getString(R.string.tile_setup_needed)
-                prefs.running -> prefs.currentRelayLabel ?: getString(R.string.tile_rotating)
-                else -> getString(R.string.tile_off)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                tile.subtitle = when {
+                    !prefs.isDeviceRegistered() -> getString(R.string.tile_setup_needed)
+                    prefs.running -> prefs.currentRelayLabel ?: getString(R.string.tile_rotating)
+                    else -> getString(R.string.tile_off)
+                }
             }
             tile.updateTile()
         }
