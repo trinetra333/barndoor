@@ -28,12 +28,13 @@ The debug APK is signed with Android's default debug key, so it installs and run
 
 ## How it works
 
-- **DNS changer** — a local `VpnService` that only intercepts UDP/port 53 packets addressed to your chosen resolver and relays them over a protected socket. Nothing else is routed through it, so it's lightweight and only affects DNS.
+- **DNS changer** — a local `VpnService` that only intercepts DNS traffic (UDP and TCP, port 53) addressed to your chosen resolver and relays it — UDP over a protected socket, TCP through a small hand-rolled relay that terminates the connection at the tunnel and splices it to a real connection to the resolver. Anything else bound for that same IP (which is the only IP ever routed into the tunnel) gets an immediate TCP RST or is dropped, so it fails fast instead of hanging.
 - **IP rotation** — uses the official `com.wireguard.android:tunnel` library. One WireGuard identity (key pair + Mullvad-assigned address) is registered once; a foreground service then reconnects that same identity to a different Mullvad relay on a timer, which is what actually changes your visible exit IP/country.
 
 ## Known limitations
 
-- DNS proxy is UDP-only. Apps that hardcode DNS-over-HTTPS/TLS to their own provider, or that fall back to TCP for oversized DNS responses, will bypass it.
+- Apps that hardcode DNS-over-HTTPS/TLS to their own provider bypass this proxy entirely, since that traffic never targets the resolver IP in the first place.
+- The TCP relay handles the real-world DNS-over-TCP case (one query, one response, connection closes) but isn't a full RFC 793 stack — no retransmission, reordering, or pipelining. Fine for DNS; don't repurpose it for general TCP traffic.
 - Android only allows **one active VPN interface at a time**. Turning on the DNS tile while rotation is running (or vice versa) will replace whichever was active — they're not meant to run simultaneously.
 - The Mullvad account number and WireGuard private key are stored in this app's normal (app-private, not additionally encrypted) SharedPreferences. Fine for personal use; if you ever ship this more broadly, swap in `androidx.security.crypto`'s `EncryptedSharedPreferences`.
 - Listing installed apps for the per-app screen uses the `QUERY_ALL_PACKAGES` permission. That's unrestricted for a sideloaded build; a Play Store listing would need to declare the "Core app functionality" use-case for that permission in Play Console.

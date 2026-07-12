@@ -22,13 +22,15 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * A local, no-root VPN that intercepts *only* DNS (UDP port 53) packets bound for the
- * chosen resolver(s) and relays them over a protected socket. Every other destination
- * is left completely alone (never routed into the tunnel), so this only changes DNS,
- * not general traffic.
+ * A local, no-root VPN that intercepts *only* DNS traffic (UDP and TCP, port 53)
+ * bound for the chosen resolver(s) and relays it over a protected socket/connection.
+ * Every other destination is left completely alone (never routed into the tunnel),
+ * so this only changes DNS, not general traffic. Any non-DNS traffic that happens to
+ * target the same resolver IP gets an immediate TCP RST / is dropped, so it fails
+ * fast instead of hanging.
  *
- * Limitation: UDP DNS only. Apps that hardcode DNS-over-HTTPS/TLS to a different
- * provider, or that fall back to TCP DNS for large responses, will bypass this proxy.
+ * Limitation: apps that hardcode DNS-over-HTTPS/TLS to a different provider entirely
+ * will bypass this proxy, since that traffic never goes to the resolver IP at all.
  */
 class DnsVpnService : VpnService() {
 
@@ -36,6 +38,8 @@ class DnsVpnService : VpnService() {
     private val running = AtomicBoolean(false)
     private val forwardPool = Executors.newCachedThreadPool()
     private var readerThread: Thread? = null
+    private var staleSweepThread: Thread? = null
+    private var tcpRelay: TcpDnsRelay? = null
     private val writeLock = Any()
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -100,11 +104,24 @@ class DnsVpnService : VpnService() {
         repo.setProxyRunning(true)
 
         readerThread = Thread({ readLoop() }, "BarndoorDnsReader").apply { start() }
+        staleSweepThread = Thread({ staleSweepLoop() }, "BarndoorTcpSweep").apply { start() }
+    }
+
+    private fun staleSweepLoop() {
+        while (running.get()) {
+            try {
+                Thread.sleep(30_000)
+            } catch (e: InterruptedException) {
+                break
+            }
+            tcpRelay?.sweepStale()
+        }
     }
 
     private fun readLoop() {
         val input = FileInputStream(vpnInterface!!.fileDescriptor)
         val output = FileOutputStream(vpnInterface!!.fileDescriptor)
+        tcpRelay = TcpDnsRelay(output, writeLock) { socket -> protect(socket) }
         val buffer = ByteArray(32767)
 
         while (running.get()) {
@@ -137,8 +154,14 @@ class DnsVpnService : VpnService() {
         if (headerLen < 20 || packet.size < headerLen + 8) return
 
         val protocol = packet[9].toInt() and 0xFF
-        if (protocol != 17) return // UDP only
+        when (protocol) {
+            6 -> tcpRelay?.handle(packet, headerLen)
+            17 -> handleUdpPacket(packet, headerLen, output)
+            else -> return // anything else was never routed into this tunnel anyway
+        }
+    }
 
+    private fun handleUdpPacket(packet: ByteArray, headerLen: Int, output: FileOutputStream) {
         val srcIp = packet.copyOfRange(12, 16)
         val dstIp = packet.copyOfRange(16, 20)
 
@@ -231,6 +254,10 @@ class DnsVpnService : VpnService() {
         running.set(false)
         readerThread?.interrupt()
         readerThread = null
+        staleSweepThread?.interrupt()
+        staleSweepThread = null
+        tcpRelay?.shutdown()
+        tcpRelay = null
         try {
             vpnInterface?.close()
         } catch (e: Exception) {
