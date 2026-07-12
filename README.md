@@ -1,114 +1,51 @@
 # Barndoor
 
-**Control your Wi-Fi with ease.**
+A DNS-changer + rotating-IP Android app with two Quick Settings tiles:
 
-Barndoor is an Android app for managing a personal mobile hotspot: starting
-it, applying a disclosed website filter, and getting alerted when a new
-device joins.
+- **DNS tile** — tap to cycle through your saved DNS servers (and off), no root needed.
+- **IP tile** — toggles automatic exit-server rotation through Mullvad (WireGuard), every N minutes, either fully random or random-within-a-country.
 
-## Features
+Includes a third tab to scope the DNS proxy to specific apps instead of the whole device.
 
-- **Hotspot control** — start a `LocalOnlyHotspot` or deep-link into the
-  system hotspot settings screen. Android does not allow apps to enable
-  tethering silently (API 26+), so this app always goes through
-  Android-sanctioned, user-visible paths.
-- **Website filtering (guest-visible)** — an on-device VPN (`VpnService`)
-  blocks DNS lookups for domains you list. It only filters *this device's*
-  own traffic; it does not, and technically cannot via public Android APIs,
-  intercept or redirect other people's phones just because they're using
-  your hotspot.
-- **YouTube-only focus mode** — a one-tap allow-list mode that blocks every
-  domain except YouTube's (`youtube.com`, `youtu.be`, `googlevideo.com`,
-  `ytimg.com`) on this device. Same underlying filter, just inverted: instead
-  of blocking a list, it blocks everything *but* the list. Nothing is
-  redirected or spoofed — sites outside the allow-list simply fail to
-  resolve, same as the block-list mode.
-- **Security alerts** — best-effort notification when a new MAC address
-  shows up in this device's ARP table, so you know who's around.
+## Getting the APK (no local Android Studio needed)
 
-## What this app deliberately does NOT do
+This repo builds itself on GitHub's servers:
 
-Early drafts of this project included a "link spoofing" feature — silently
-redirecting a connected guest's traffic to different destinations than the
-ones they requested. That's a man-in-the-middle / phishing technique, and
-it's excluded from this codebase on purpose, even though this is a hotspot
-app.
+1. Push this project to a GitHub repository.
+2. Go to the **Actions** tab → the "Build Barndoor APK" workflow runs automatically on every push (or trigger it manually with "Run workflow").
+3. When it finishes, open the run → under **Artifacts**, download `barndoor-debug-apk`.
+4. Unzip it — inside is `app-debug.apk`. Transfer it to your phone and install it (you'll need to allow "install unknown apps" for whichever app you use to open the file).
 
-If you need traffic control for guests on your own network, do it on
-infrastructure you administer (e.g. a router running dnsmasq/pfSense/OpenWRT)
-and disclose the filtering with something like a captive portal notice.
-That's how legitimate guest-network filtering products work.
+The debug APK is signed with Android's default debug key, so it installs and runs like any normal app. A `barndoor-release-apk-unsigned` artifact is also produced, but it is **unsigned** and won't install as-is — it's there if you want to sign it yourself for a "real" release later (see [Android's signing docs](https://developer.android.com/studio/publish/app-signing)).
+
+## First-time setup
+
+**DNS tile:** Settings → Notifications → Quick Settings (or swipe down twice → pencil/edit icon) → drag the "Barndoor DNS" tile into your active tiles. Tapping it cycles: DNS #1 → DNS #2 → … → Off → DNS #1…
+
+**Rotation tile:** same process for "Barndoor IP". Before it will do anything, open the app → **Rotation** tab → enter your Mullvad account number → **Register device**. This calls Mullvad's API once to register a WireGuard key against your account and get you a permanent in-tunnel address; after that, rotation just swaps which relay (exit server) that same identity connects to.
+
+**Per-app DNS:** open the app → **Apps** tab. Leave everything unchecked for device-wide DNS, or check specific apps to limit the proxy to just those.
+
+## How it works
+
+- **DNS changer** — a local `VpnService` that only intercepts UDP/port 53 packets addressed to your chosen resolver and relays them over a protected socket. Nothing else is routed through it, so it's lightweight and only affects DNS.
+- **IP rotation** — uses the official `com.wireguard.android:tunnel` library. One WireGuard identity (key pair + Mullvad-assigned address) is registered once; a foreground service then reconnects that same identity to a different Mullvad relay on a timer, which is what actually changes your visible exit IP/country.
+
+## Known limitations
+
+- DNS proxy is UDP-only. Apps that hardcode DNS-over-HTTPS/TLS to their own provider, or that fall back to TCP for oversized DNS responses, will bypass it.
+- Android only allows **one active VPN interface at a time**. Turning on the DNS tile while rotation is running (or vice versa) will replace whichever was active — they're not meant to run simultaneously.
+- The Mullvad account number and WireGuard private key are stored in this app's normal (app-private, not additionally encrypted) SharedPreferences. Fine for personal use; if you ever ship this more broadly, swap in `androidx.security.crypto`'s `EncryptedSharedPreferences`.
+- Listing installed apps for the per-app screen uses the `QUERY_ALL_PACKAGES` permission. That's unrestricted for a sideloaded build; a Play Store listing would need to declare the "Core app functionality" use-case for that permission in Play Console.
+- Mullvad API endpoints used here (`api.mullvad.net`) are the same ones their own apps/CLI use, reverse-engineered from public write-ups rather than official third-party docs — if Mullvad changes them, registration will start failing and the endpoint constants in `MullvadApi.kt` are the place to update.
 
 ## Project structure
 
 ```
-barndoor/
-├── app/
-│   ├── build.gradle.kts
-│   └── src/main/
-│       ├── AndroidManifest.xml
-│       ├── java/com/barndoor/app/
-│       │   ├── MainActivity.kt
-│       │   ├── HotspotManager.kt
-│       │   ├── BarndoorVpnService.kt
-│       │   ├── DeviceMonitorService.kt
-│       │   └── AlertNotifier.kt
-│       └── res/
-│           ├── layout/activity_main.xml
-│           └── values/{strings.xml,themes.xml}
-├── build.gradle.kts
-├── settings.gradle.kts
-└── gradle/wrapper/gradle-wrapper.properties
+app/src/main/java/com/barndoor/app/
+  MainActivity.kt, BarndoorApp.kt
+  dns/          DNS list, VpnService-based proxy, DNS quick tile
+  apps/         installed-app listing for the per-app screen
+  rotation/     Mullvad API client, WireGuard manager, rotation service + tile
+  util/         IPv4/UDP checksum helpers used by the DNS proxy
 ```
-
-## CI/CD (GitHub Actions)
-
-Two workflows live in `.github/workflows/`:
-
-- **`android-ci.yml`** — runs on every push/PR to `main`: lint → unit tests →
-  debug APK build, with the APK uploaded as a build artifact.
-- **`release.yml`** — runs when you push a tag like `v1.0.0`: builds an
-  unsigned release APK and uploads it. Add your keystore as repo secrets and
-  a signing step before shipping to the Play Store.
-
-## Building
-
-1. Open the `barndoor/` folder in Android Studio (Koala+ recommended), or
-2. From the command line, generate the wrapper jar once (Android Studio does
-   this automatically on first open):
-   ```
-   gradle wrapper --gradle-version 8.7
-   ./gradlew assembleDebug
-   ```
-
-Minimum SDK 26, target/compile SDK 34.
-
-## Permissions used
-
-| Permission | Why |
-|---|---|
-| `ACCESS_WIFI_STATE` / `CHANGE_WIFI_STATE` | Read hotspot/Wi-Fi state |
-| `ACCESS_FINE_LOCATION` | Required by Android for `LocalOnlyHotspot` |
-| `POST_NOTIFICATIONS` | Show security alerts |
-| `FOREGROUND_SERVICE*` | Run the device-monitor service reliably |
-| `BIND_VPN_SERVICE` (service-level) | Implement the on-device filter |
-
-## Publishing to Git
-
-```bash
-cd barndoor
-git init
-git add .
-git commit -m "Initial Barndoor scaffold"
-git remote add origin <your-repo-url>
-git push -u origin main
-```
-
-## Status
-
-This is a working scaffold: the UI, service wiring, permission flow, and
-architecture are in place. The DNS packet parsing inside
-`BarndoorVpnService.runFilterLoop()` is stubbed with comments marking where
-real packet parsing goes — that's the one piece that needs a proper
-DNS/IP-packet library (e.g. parsing raw UDP port 53 packets) before this is
-production-ready.
