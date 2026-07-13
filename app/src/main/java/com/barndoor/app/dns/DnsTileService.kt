@@ -2,6 +2,7 @@ package com.barndoor.app.dns
 
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import android.util.Log
 
 /**
  * Each tap cycles to the next server in [DnsRepository.getTileServers] (the checked
@@ -10,6 +11,11 @@ import android.service.quicksettings.TileService
  * otherwise. Tapping past the last entry turns DNS off; tapping again from off starts
  * back at the first entry. The tile's label shows the active resolver's name, not a
  * static "Barndoor DNS".
+ *
+ * Everything here runs synchronously and is wrapped defensively: an uncaught
+ * exception here previously could leave the tile showing a stale "unavailable" state
+ * until the next onStartListening(), which looked like the tile "stopped responding"
+ * after one tap.
  */
 class DnsTileService : TileService() {
 
@@ -20,12 +26,18 @@ class DnsTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        try {
+            handleClick()
+        } catch (e: Exception) {
+            Log.e(TAG, "tile click failed", e)
+        }
+        refreshTile()
+    }
+
+    private fun handleClick() {
         val repo = DnsRepository(this)
         val cycle = repo.getTileServers()
-        if (cycle.isEmpty()) {
-            refreshTile()
-            return
-        }
+        if (cycle.isEmpty()) return
 
         if (!repo.isProxyRunning()) {
             activate(repo, cycle.first())
@@ -39,15 +51,10 @@ class DnsTileService : TileService() {
                 activate(repo, cycle[nextPos])
             }
         }
-
-        qsTile?.let { it.state = Tile.STATE_UNAVAILABLE; it.updateTile() }
-        refreshTile(delayed = true)
     }
 
     private fun activate(repo: DnsRepository, server: DnsServer) {
-        val fullList = repo.getServers()
-        val idx = fullList.indexOfFirst { it.id == server.id }
-        if (idx >= 0) repo.setSelectedIndex(idx)
+        repo.setSelectedServerId(server.id)
 
         if (repo.isProxyRunning()) {
             when (repo.activeMode) {
@@ -81,9 +88,9 @@ class DnsTileService : TileService() {
         repo.setProxyRunning(false)
     }
 
-    private fun refreshTile(delayed: Boolean = false) {
+    private fun refreshTile() {
         val tile = qsTile ?: return
-        val apply = {
+        try {
             val repo = DnsRepository(this)
             val running = repo.isProxyRunning()
             val server = repo.getSelectedServer()
@@ -94,12 +101,15 @@ class DnsTileService : TileService() {
                 repo.activeMode == DnsMode.SYSTEM -> "System DNS"
                 else -> "VPN proxy"
             }
-            tile.updateTile()
+        } catch (e: Exception) {
+            Log.e(TAG, "tile refresh failed", e)
+            tile.state = Tile.STATE_INACTIVE
+            tile.label = "Barndoor DNS"
         }
-        if (delayed) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(apply, 350)
-        } else {
-            apply()
-        }
+        tile.updateTile()
+    }
+
+    companion object {
+        private const val TAG = "BarndoorDnsTile"
     }
 }

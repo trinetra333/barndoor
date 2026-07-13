@@ -16,6 +16,7 @@
     <string name="dns_stop">Stop</string>
     <string name="dns_tile_checkbox_desc">Include in quick tile cycle</string>
     <string name="dns_tile_label_small">Tile</string>
+    <string name="dns_root_grant_button">\uD83D\uDD11 Root detected \u2014 tap to enable system DNS (no VPN, no ADB)</string>
     <string name="dns_add_custom">Add custom DNS</string>
     <string name="dns_add_dialog_title">Add custom DNS server</string>
     <string name="dns_name_hint">Name</string>

@@ -2,6 +2,7 @@ package com.barndoor.app.rotation
 
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import android.util.Log
 import com.barndoor.app.R
 
 class RotationTileService : TileService() {
@@ -13,12 +14,20 @@ class RotationTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        try {
+            handleClick()
+        } catch (e: Exception) {
+            Log.e(TAG, "tile click failed", e)
+        }
+        refreshTile()
+    }
+
+    private fun handleClick() {
         val prefs = RotationPrefs(this)
 
         if (!prefs.isDeviceRegistered()) {
             // Can't start from the tile alone — registering needs the account number
             // and a one-time VPN consent dialog, both handled in the app.
-            refreshTile()
             return
         }
 
@@ -27,29 +36,28 @@ class RotationTileService : TileService() {
         } else {
             RotationService.start(this)
         }
-        qsTile?.let { it.state = Tile.STATE_UNAVAILABLE; it.updateTile() }
-        refreshTile(delayed = true)
     }
 
-    private fun refreshTile(delayed: Boolean = false) {
+    private fun refreshTile() {
         val tile = qsTile ?: return
-        val apply = {
+        try {
             val prefs = RotationPrefs(this)
             tile.state = if (prefs.running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
             tile.label = getString(R.string.tile_rotation_label)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                tile.subtitle = when {
-                    !prefs.isDeviceRegistered() -> getString(R.string.tile_setup_needed)
-                    prefs.running -> prefs.currentRelayLabel ?: getString(R.string.tile_rotating)
-                    else -> getString(R.string.tile_off)
-                }
+            tile.subtitle = when {
+                !prefs.isDeviceRegistered() -> getString(R.string.tile_setup_needed)
+                prefs.running -> prefs.currentRelayLabel ?: getString(R.string.tile_rotating)
+                else -> getString(R.string.tile_off)
             }
-            tile.updateTile()
+        } catch (e: Exception) {
+            Log.e(TAG, "tile refresh failed", e)
+            tile.state = Tile.STATE_INACTIVE
+            tile.label = getString(R.string.tile_rotation_label)
         }
-        if (delayed) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(apply, 350)
-        } else {
-            apply()
-        }
+        tile.updateTile()
+    }
+
+    companion object {
+        private const val TAG = "BarndoorRotationTile"
     }
 }

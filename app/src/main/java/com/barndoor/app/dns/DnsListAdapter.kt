@@ -11,19 +11,19 @@ import androidx.recyclerview.widget.RecyclerView
 import com.barndoor.app.R
 
 class DnsListAdapter(
-    private val onSelect: (Int) -> Unit,
-    private val onDelete: (Int) -> Unit,
-    private val onToggleTile: (Int, Boolean) -> Unit
+    private val onSelect: (DnsServer) -> Unit,
+    private val onDelete: (DnsServer) -> Unit,
+    private val onToggleTile: (DnsServer, Boolean) -> Unit
 ) : RecyclerView.Adapter<DnsListAdapter.ViewHolder>() {
 
     private val items = mutableListOf<DnsServer>()
-    private var selectedIndex = 0
+    private var selectedId: String? = null
     private var tileIds: Set<String> = emptySet()
 
-    fun submit(newItems: List<DnsServer>, selected: Int, tileServerIds: Set<String>) {
+    fun submit(newItems: List<DnsServer>, selectedServerId: String?, tileServerIds: Set<String>) {
         items.clear()
         items.addAll(newItems)
-        selectedIndex = selected
+        selectedId = selectedServerId
         tileIds = tileServerIds
         notifyDataSetChanged()
     }
@@ -43,6 +43,8 @@ class DnsListAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        // Every callback is driven off the server object itself, not its position —
+        // position can drift after re-sorts/deletes, an object reference can't.
         val server = items[position]
         holder.name.text = server.name
         holder.addresses.text = buildString {
@@ -59,16 +61,16 @@ class DnsListAdapter(
         } else {
             holder.tagline.visibility = View.GONE
         }
-        holder.radio.isChecked = position == selectedIndex
+        holder.radio.isChecked = server.id == selectedId
         holder.delete.visibility = if (server.custom) View.VISIBLE else View.GONE
 
         holder.tileCheckbox.setOnCheckedChangeListener(null)
         holder.tileCheckbox.isChecked = server.id in tileIds
-        holder.tileCheckbox.setOnCheckedChangeListener { _, checked -> onToggleTile(position, checked) }
+        holder.tileCheckbox.setOnCheckedChangeListener { _, checked -> onToggleTile(server, checked) }
 
-        holder.itemView.setOnClickListener { onSelect(position) }
-        holder.radio.setOnClickListener { onSelect(position) }
-        holder.delete.setOnClickListener { onDelete(position) }
+        holder.itemView.setOnClickListener { onSelect(server) }
+        holder.radio.setOnClickListener { onSelect(server) }
+        holder.delete.setOnClickListener { onDelete(server) }
     }
 
     override fun getItemCount(): Int = items.size

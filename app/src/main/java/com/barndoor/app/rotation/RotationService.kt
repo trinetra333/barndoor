@@ -144,7 +144,9 @@ class RotationService : Service() {
 
         fun stop(context: Context) {
             val intent = Intent(context, RotationService::class.java).setAction(ACTION_STOP)
-            ContextCompat.startForegroundService(context, intent)
+            // See DnsVpnService.stop() for why this must be startService, not
+            // startForegroundService.
+            context.startService(intent)
         }
     }
 }

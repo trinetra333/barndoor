@@ -37,21 +37,19 @@ class DnsFragment : Fragment() {
         repo = DnsRepository(requireContext())
 
         adapter = DnsListAdapter(
-            onSelect = { index ->
-                repo.setSelectedIndex(index)
+            onSelect = { server ->
+                repo.setSelectedServerId(server.id)
                 if (repo.isProxyRunning()) startProxyFlow() // restart/switch mode with new selection
                 refresh()
             },
-            onDelete = { index ->
-                repo.getServers().getOrNull(index)?.let { repo.removeServer(it) }
+            onDelete = { server ->
+                repo.removeServer(server)
                 refresh()
             },
-            onToggleTile = { index, checked ->
-                repo.getServers().getOrNull(index)?.let { server ->
-                    val current = repo.getTileServerIds().toMutableSet()
-                    if (checked) current.add(server.id) else current.remove(server.id)
-                    repo.setTileServerIds(current)
-                }
+            onToggleTile = { server, checked ->
+                val current = repo.getTileServerIds().toMutableSet()
+                if (checked) current.add(server.id) else current.remove(server.id)
+                repo.setTileServerIds(current)
             }
         )
         binding.dnsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -68,6 +66,7 @@ class DnsFragment : Fragment() {
 
         binding.dnsAddCustom.setOnClickListener { showAddDialog() }
         binding.dnsSpeedTest.setOnClickListener { showSpeedTestDialog() }
+        binding.dnsRootGrantButton.setOnClickListener { grantViaRoot() }
 
         refresh()
     }
@@ -121,11 +120,26 @@ class DnsFragment : Fragment() {
         }
     }
 
+    private fun grantViaRoot() {
+        binding.dnsRootGrantButton.isEnabled = false
+        binding.dnsRootGrantButton.text = "Requesting root\u2026"
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = RootManager.grantSystemDnsPermission(requireContext())
+            if (!isAdded) return@launch
+            binding.dnsRootGrantButton.isEnabled = true
+            result.onFailure { e ->
+                binding.dnsRootGrantButton.text = getString(R.string.dns_root_grant_button)
+                binding.dnsModeHint.text = "Root grant failed: ${e.message}"
+            }
+            refresh()
+        }
+    }
+
     private fun refresh() {
-        val servers = repo.getServers()
-        adapter.submit(servers, repo.getSelectedIndex(), repo.getTileServerIds())
-        val running = repo.isProxyRunning()
+        val servers = repo.getServersForDisplay()
         val selected = repo.getSelectedServer()
+        adapter.submit(servers, selected?.id, repo.getTileServerIds())
+        val running = repo.isProxyRunning()
 
         binding.dnsStatusText.text = when {
             running && selected != null && repo.activeMode == DnsMode.SYSTEM ->
@@ -138,6 +152,9 @@ class DnsFragment : Fragment() {
             getString(if (running) R.string.dns_stop else R.string.dns_start)
 
         binding.dnsModeHint.text = modeExplanation(selected)
+
+        val showRootButton = !SystemDnsManager.hasPermission(requireContext()) && RootManager.looksRooted()
+        binding.dnsRootGrantButton.visibility = if (showRootButton) View.VISIBLE else View.GONE
     }
 
     /** Explains exactly which of the three gates is blocking system (no-VPN) mode right now. */
@@ -149,7 +166,8 @@ class DnsFragment : Fragment() {
         return when {
             !hasPermission ->
                 "Using the VPN proxy because the system-DNS permission hasn't been granted yet. " +
-                    "Grant it once via ADB to enable no-VPN mode for DNS-over-TLS servers \u2014 see README."
+                    "Grant it once via ADB (or the root button below, if rooted) to enable no-VPN mode " +
+                    "for DNS-over-TLS servers \u2014 see README."
             overrideCount > 0 ->
                 "Using the VPN proxy because $overrideCount app${if (overrideCount == 1) "" else "s"} " +
                     "in the Apps tab has a custom DNS assignment. System mode is device-wide only, so any " +

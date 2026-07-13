@@ -10,6 +10,11 @@ enum class DnsMode { VPN, SYSTEM }
  * Single source of truth for the DNS list, the device-wide default selection, which
  * servers the quick tile cycles through, per-app overrides, and which mechanism
  * (VPN proxy vs Android's native Private DNS) is currently active.
+ *
+ * Selection is tracked by server ID, not list position — a positional index silently
+ * goes stale (and can point at the wrong server, or crash on an out-of-range lookup)
+ * the moment the list is reordered or an entry is deleted, so ID is the only thing
+ * that's ever persisted here.
  */
 class DnsRepository(context: Context) {
 
@@ -19,6 +24,14 @@ class DnsRepository(context: Context) {
     fun getServers(): List<DnsServer> {
         val stored = DnsServer.listFromJson(prefs.getString(KEY_SERVERS, null))
         return if (stored.isEmpty()) DnsServer.PRESETS else stored
+    }
+
+    /** Same servers, but with the currently-selected one pinned to the top for display. */
+    fun getServersForDisplay(): List<DnsServer> {
+        val all = getServers()
+        val selectedId = getSelectedServerId() ?: return all
+        val selected = all.find { it.id == selectedId } ?: return all
+        return listOf(selected) + all.filterNot { it.id == selectedId }
     }
 
     fun saveServers(servers: List<DnsServer>) {
@@ -32,22 +45,24 @@ class DnsRepository(context: Context) {
     fun removeServer(server: DnsServer) {
         val updated = getServers().filterNot { it.id == server.id }
         saveServers(updated)
-        if (getSelectedIndex() >= updated.size) setSelectedIndex(0)
+        if (getSelectedServerId() == server.id) {
+            updated.firstOrNull()?.let { setSelectedServerId(it.id) }
+        }
     }
 
     fun getServerById(id: String): DnsServer? = getServers().find { it.id == id }
 
-    fun getSelectedIndex(): Int = prefs.getInt(KEY_SELECTED_INDEX, 0)
+    fun getSelectedServerId(): String? = prefs.getString(KEY_SELECTED_ID, null)
 
-    fun setSelectedIndex(index: Int) {
-        prefs.edit().putInt(KEY_SELECTED_INDEX, index).apply()
+    fun setSelectedServerId(id: String) {
+        prefs.edit().putString(KEY_SELECTED_ID, id).apply()
     }
 
     /** The device-wide default resolver used by the quick tile and any app without an override. */
     fun getSelectedServer(): DnsServer? {
         val servers = getServers()
-        val index = getSelectedIndex()
-        return servers.getOrNull(index) ?: servers.firstOrNull()
+        val id = getSelectedServerId()
+        return servers.find { it.id == id } ?: servers.firstOrNull()
     }
 
     fun isProxyRunning(): Boolean = prefs.getBoolean(KEY_RUNNING, false)
@@ -100,7 +115,7 @@ class DnsRepository(context: Context) {
     companion object {
         private const val PREFS_NAME = "barndoor_dns_prefs"
         private const val KEY_SERVERS = "servers"
-        private const val KEY_SELECTED_INDEX = "selected_index"
+        private const val KEY_SELECTED_ID = "selected_id"
         private const val KEY_RUNNING = "proxy_running"
         private const val KEY_APP_ASSIGNMENTS = "app_assignments"
         private const val KEY_MODE = "active_mode"

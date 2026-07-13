@@ -388,7 +388,11 @@ class DnsVpnService : VpnService() {
 
         fun stop(context: Context) {
             val intent = Intent(context, DnsVpnService::class.java).setAction(ACTION_STOP)
-            ContextCompat.startForegroundService(context, intent)
+            // Plain startService, not startForegroundService: the service is already
+            // running, and startForegroundService() here would require startForeground()
+            // to be called again in response, which the ACTION_STOP path never does —
+            // that mismatch is what was crashing the app after one stop/cycle.
+            context.startService(intent)
         }
     }
 }

@@ -73,13 +73,22 @@ DNS-over-TLS and no per-app DNS is configured — the DNS tab shows which mode i
 currently active. Revoke it any time with
 `adb shell pm revoke com.barndoor.app.debug android.permission.WRITE_SECURE_SETTINGS`.
 
+**On a rooted device you can skip ADB entirely** — the DNS tab shows a "Root
+detected" button that grants the same permission via a root shell (`su`) instead,
+triggering your root manager's (Magisk/KernelSU/etc.) one-time approval prompt. Root
+is only ever used for that single `pm grant` call, from inside the app — never from
+the Quick Settings tile itself (a root prompt blocking a tile tap would risk an ANR),
+and never for anything beyond granting that one permission.
+
 ## First-time setup
 
 - **DNS tile:** swipe down twice → pencil/edit icon → drag "Barndoor DNS" into your
   active tiles. In the app's DNS tab, check the small box on each server you want
   included in the tile's cycle (all are included by default) — tapping the tile only
   cycles through checked servers, then Off. The tile's label shows the active
-  resolver's name, not a generic "Barndoor DNS".
+  resolver's name, not a generic "Barndoor DNS". Whichever server is currently active
+  is automatically sorted to the top of the list in the app, so you don't have to
+  scroll to find it.
 - **Rotation tile:** same process for "Barndoor IP". Needs the one-time Mullvad setup
   above (in-app or via the build secret) before it does anything.
 - **Per-app DNS:** open the app → **Apps** tab → tap any app → pick a resolver (or

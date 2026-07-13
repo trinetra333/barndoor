@@ -54,6 +54,22 @@
             android:textColor="@color/barn_text_secondary"
             android:textSize="11sp"
             android:textIsSelectable="true" />
+
+        <TextView
+            android:id="@+id/dnsRootGrantButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:padding="10dp"
+            android:background="@drawable/bg_card"
+            android:gravity="center"
+            android:text="@string/dns_root_grant_button"
+            android:textColor="@color/barn_teal"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:visibility="gone"
+            android:clickable="true"
+            android:focusable="true" />
     </LinearLayout>
 
     <LinearLayout
