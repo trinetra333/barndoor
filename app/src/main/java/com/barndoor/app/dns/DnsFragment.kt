@@ -137,10 +137,29 @@ class DnsFragment : Fragment() {
         binding.dnsStartStopButton.text =
             getString(if (running) R.string.dns_stop else R.string.dns_start)
 
-        binding.dnsModeHint.text = if (SystemDnsManager.hasPermission(requireContext())) {
-            getString(R.string.dns_mode_hint_granted)
-        } else {
-            getString(R.string.dns_mode_hint_not_granted)
+        binding.dnsModeHint.text = modeExplanation(selected)
+    }
+
+    /** Explains exactly which of the three gates is blocking system (no-VPN) mode right now. */
+    private fun modeExplanation(selected: DnsServer?): String {
+        val hasPermission = SystemDnsManager.hasPermission(requireContext())
+        val hasDot = selected != null && !selected.dotHostname.isNullOrBlank()
+        val overrideCount = repo.getAppAssignments().size
+
+        return when {
+            !hasPermission ->
+                "Using the VPN proxy because the system-DNS permission hasn't been granted yet. " +
+                    "Grant it once via ADB to enable no-VPN mode for DNS-over-TLS servers \u2014 see README."
+            overrideCount > 0 ->
+                "Using the VPN proxy because $overrideCount app${if (overrideCount == 1) "" else "s"} " +
+                    "in the Apps tab has a custom DNS assignment. System mode is device-wide only, so any " +
+                    "per-app override forces VPN mode, even with the permission granted."
+            !hasDot ->
+                "Using the VPN proxy because \"${selected?.name}\" doesn't support DNS-over-TLS " +
+                    "(no \uD83D\uDD12 hostname) \u2014 system mode only works with DoT servers. Pick one that " +
+                    "shows \uD83D\uDD12 to switch to no-VPN mode."
+            else ->
+                "\u2713 Using Android's system Private DNS \u2014 no VPN icon, no VPN interface at all."
         }
     }
 

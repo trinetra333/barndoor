@@ -16,8 +16,6 @@
     <string name="dns_stop">Stop</string>
     <string name="dns_tile_checkbox_desc">Include in quick tile cycle</string>
     <string name="dns_tile_label_small">Tile</string>
-    <string name="dns_mode_hint_granted">\u2713 System DNS permission granted \u2014 encrypted (DoT) servers apply with no VPN icon. Servers without DNS-over-TLS, or when per-app DNS is set, still use the VPN proxy.</string>
-    <string name="dns_mode_hint_not_granted">Using the VPN proxy (shows the VPN key icon \u2014 unavoidable for per-app DNS). For DNS-over-TLS servers, you can avoid the VPN icon entirely by granting one permission once via ADB: see README.</string>
     <string name="dns_add_custom">Add custom DNS</string>
     <string name="dns_add_dialog_title">Add custom DNS server</string>
     <string name="dns_name_hint">Name</string>
