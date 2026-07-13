@@ -29,33 +29,40 @@
             android:padding="18dp"
             android:layout_marginBottom="14dp">
 
-            <com.google.android.material.textfield.TextInputLayout
+            <LinearLayout
+                android:id="@+id/manualAccountEntry"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/rotation_account_hint"
-                app:boxStrokeColor="@color/barn_accent"
-                app:hintTextColor="@color/barn_text_secondary">
+                android:orientation="vertical">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/accountInput"
+                <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textColor="@color/barn_text_primary" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:hint="@string/rotation_account_hint"
+                    app:boxStrokeColor="@color/barn_accent"
+                    app:hintTextColor="@color/barn_text_secondary">
 
-            <TextView
-                android:id="@+id/registerButton"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/bg_pill_accent"
-                android:gravity="center"
-                android:text="@string/rotation_register"
-                android:textColor="@color/barn_on_accent"
-                android:textStyle="bold"
-                android:clickable="true"
-                android:focusable="true" />
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/accountInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:textColor="@color/barn_text_primary" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:id="@+id/registerButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_pill_accent"
+                    android:gravity="center"
+                    android:text="@string/rotation_register"
+                    android:textColor="@color/barn_on_accent"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/registrationStatus"

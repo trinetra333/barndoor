@@ -4,11 +4,12 @@ import android.content.Context
 import android.content.SharedPreferences
 import org.json.JSONObject
 
+enum class DnsMode { VPN, SYSTEM }
+
 /**
- * Single source of truth for the DNS list, the device-wide default selection, and
- * per-app overrides. Every app routed through the proxy uses the device-wide default
- * *unless* it has an explicit entry in [getAppAssignments], in which case it gets its
- * own resolver instead.
+ * Single source of truth for the DNS list, the device-wide default selection, which
+ * servers the quick tile cycles through, per-app overrides, and which mechanism
+ * (VPN proxy vs Android's native Private DNS) is currently active.
  */
 class DnsRepository(context: Context) {
 
@@ -55,6 +56,32 @@ class DnsRepository(context: Context) {
         prefs.edit().putBoolean(KEY_RUNNING, running).apply()
     }
 
+    var activeMode: DnsMode
+        get() = DnsMode.valueOf(prefs.getString(KEY_MODE, DnsMode.VPN.name)!!)
+        set(value) = prefs.edit().putString(KEY_MODE, value.name).apply()
+
+    /**
+     * Which server IDs the quick tile cycles through. Defaults to "all of them" the
+     * first time this is read (so nothing changes for anyone who hasn't customized
+     * it yet); once set, only these are included.
+     */
+    fun getTileServerIds(): Set<String> {
+        val raw = prefs.getStringSet(KEY_TILE_IDS, null)
+        return raw ?: getServers().map { it.id }.toSet()
+    }
+
+    fun setTileServerIds(ids: Set<String>) {
+        prefs.edit().putStringSet(KEY_TILE_IDS, ids).apply()
+    }
+
+    /** Servers the tile should cycle through, falling back to the full list if the set is empty. */
+    fun getTileServers(): List<DnsServer> {
+        val ids = getTileServerIds()
+        val all = getServers()
+        val filtered = all.filter { it.id in ids }
+        return filtered.ifEmpty { all }
+    }
+
     /** packageName -> DnsServer.id, for apps that override the device-wide default. */
     fun getAppAssignments(): Map<String, String> {
         val raw = prefs.getString(KEY_APP_ASSIGNMENTS, null) ?: return emptyMap()
@@ -70,18 +97,13 @@ class DnsRepository(context: Context) {
         prefs.edit().putString(KEY_APP_ASSIGNMENTS, obj.toString()).apply()
     }
 
-    /** Resolves the DnsServer a given app should use: its override, or the device-wide default. */
-    fun resolveServerForApp(packageName: String?): DnsServer {
-        val default = getSelectedServer() ?: DnsServer.PRESETS.first()
-        val assignedId = packageName?.let { getAppAssignments()[it] } ?: return default
-        return getServerById(assignedId) ?: default
-    }
-
     companion object {
         private const val PREFS_NAME = "barndoor_dns_prefs"
         private const val KEY_SERVERS = "servers"
         private const val KEY_SELECTED_INDEX = "selected_index"
         private const val KEY_RUNNING = "proxy_running"
         private const val KEY_APP_ASSIGNMENTS = "app_assignments"
+        private const val KEY_MODE = "active_mode"
+        private const val KEY_TILE_IDS = "tile_ids"
     }
 }

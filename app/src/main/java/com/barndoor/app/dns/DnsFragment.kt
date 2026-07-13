@@ -39,12 +39,19 @@ class DnsFragment : Fragment() {
         adapter = DnsListAdapter(
             onSelect = { index ->
                 repo.setSelectedIndex(index)
-                if (repo.isProxyRunning()) startProxyFlow() // restart with new selection
+                if (repo.isProxyRunning()) startProxyFlow() // restart/switch mode with new selection
                 refresh()
             },
             onDelete = { index ->
                 repo.getServers().getOrNull(index)?.let { repo.removeServer(it) }
                 refresh()
+            },
+            onToggleTile = { index, checked ->
+                repo.getServers().getOrNull(index)?.let { server ->
+                    val current = repo.getTileServerIds().toMutableSet()
+                    if (checked) current.add(server.id) else current.remove(server.id)
+                    repo.setTileServerIds(current)
+                }
             }
         )
         binding.dnsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -52,8 +59,7 @@ class DnsFragment : Fragment() {
 
         binding.dnsStartStopButton.setOnClickListener {
             if (repo.isProxyRunning()) {
-                DnsVpnService.stop(requireContext())
-                repo.setProxyRunning(false)
+                stopActive()
                 refresh()
             } else {
                 startProxyFlow()
@@ -71,11 +77,45 @@ class DnsFragment : Fragment() {
         refresh()
     }
 
+    private fun stopActive() {
+        when (repo.activeMode) {
+            DnsMode.SYSTEM -> SystemDnsManager.clear(requireContext())
+            DnsMode.VPN -> DnsVpnService.stop(requireContext())
+        }
+        repo.setProxyRunning(false)
+    }
+
+    /**
+     * Uses Android's native Private DNS (no VPN) when it's actually usable right now —
+     * permission granted, the selected server has a DoT hostname, and no per-app
+     * overrides are configured (system mode is device-wide only, so it can't coexist
+     * with per-app assignments). Falls back to the VPN proxy otherwise.
+     */
     private fun startProxyFlow() {
+        val server = repo.getSelectedServer() ?: return
+        val useSystem = repo.getAppAssignments().isEmpty() &&
+            SystemDnsManager.canUseSystemMode(requireContext(), server)
+
+        if (repo.isProxyRunning()) stopActive() // clean up whichever mode was active before switching
+
+        if (useSystem) {
+            if (SystemDnsManager.apply(requireContext(), server.dotHostname!!)) {
+                repo.activeMode = DnsMode.SYSTEM
+                repo.setProxyRunning(true)
+            }
+            refresh()
+            return
+        }
+
+        // Avoid a stale system Private DNS hostname conflicting with the VPN tunnel.
+        if (SystemDnsManager.hasPermission(requireContext())) {
+            SystemDnsManager.clear(requireContext())
+        }
+
         val intent = VpnService.prepare(requireContext())
         (activity as? MainActivity)?.requestVpnConsent(intent) {
+            repo.activeMode = DnsMode.VPN
             DnsVpnService.start(requireContext())
-            // Reflect optimistic state; the service also persists this once it's up.
             repo.setProxyRunning(true)
             binding.dnsRecyclerView.postDelayed({ if (isAdded) refresh() }, 400)
         }
@@ -83,16 +123,25 @@ class DnsFragment : Fragment() {
 
     private fun refresh() {
         val servers = repo.getServers()
-        adapter.submit(servers, repo.getSelectedIndex())
+        adapter.submit(servers, repo.getSelectedIndex(), repo.getTileServerIds())
         val running = repo.isProxyRunning()
         val selected = repo.getSelectedServer()
-        binding.dnsStatusText.text = if (running && selected != null) {
-            "Running \u2022 ${selected.name}"
-        } else {
-            "Stopped"
+
+        binding.dnsStatusText.text = when {
+            running && selected != null && repo.activeMode == DnsMode.SYSTEM ->
+                "Running \u2022 ${selected.name} \u2022 System DNS (no VPN)"
+            running && selected != null ->
+                "Running \u2022 ${selected.name} \u2022 VPN proxy"
+            else -> "Stopped"
         }
         binding.dnsStartStopButton.text =
             getString(if (running) R.string.dns_stop else R.string.dns_start)
+
+        binding.dnsModeHint.text = if (SystemDnsManager.hasPermission(requireContext())) {
+            getString(R.string.dns_mode_hint_granted)
+        } else {
+            getString(R.string.dns_mode_hint_not_granted)
+        }
     }
 
     private fun showAddDialog() {

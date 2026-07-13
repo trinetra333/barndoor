@@ -59,8 +59,8 @@ class RotationFragment : Fragment() {
             if (checked) startRotationFlow() else stopRotation()
         }
 
-        maybeAutoRegisterFromBuildConfig()
         updateStatus()
+        maybeAutoRegisterFromBuildConfig()
     }
 
     override fun onResume() {
@@ -69,11 +69,18 @@ class RotationFragment : Fragment() {
     }
 
     /** If a Mullvad account was baked in at build time (see README) and nothing is
-     *  registered yet, register automatically so the tile works with zero typing. */
+     *  registered yet, register automatically and hide the manual-entry form so the
+     *  tab actually feels like zero typing, not just a pre-filled field. */
     private fun maybeAutoRegisterFromBuildConfig() {
         val baked = BuildConfig.MULLVAD_ACCOUNT
-        if (baked.isNotBlank() && !prefs.isDeviceRegistered()) {
-            binding.accountInput.setText(baked)
+        if (baked.isBlank()) {
+            binding.manualAccountEntry.visibility = View.VISIBLE
+            return
+        }
+        binding.accountInput.setText(baked)
+        binding.manualAccountEntry.visibility = View.GONE
+        if (!prefs.isDeviceRegistered()) {
+            binding.registrationStatus.text = "Registering with the account configured at build time\u2026"
             registerDevice(baked)
         }
     }
@@ -101,6 +108,7 @@ class RotationFragment : Fragment() {
                     "Registered \u2022 tunnel address ${registration.ipv4Address}"
             }.onFailure { e ->
                 binding.registrationStatus.text = "Registration failed: ${e.message}"
+                binding.manualAccountEntry.visibility = View.VISIBLE
             }
         }
     }

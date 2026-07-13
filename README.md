@@ -18,43 +18,96 @@ An Android app with two Quick Settings tiles and a full toolkit around them:
 ## Getting the APK (no local Android Studio needed)
 
 1. Push this project to a GitHub repository.
-2. Go to the **Actions** tab → the "Build Barndoor APK" workflow runs on every push
-   (or trigger it manually with "Run workflow").
-3. When it finishes, open the run → under **Artifacts**, download `barndoor-debug-apk`.
-4. Unzip it — inside is `app-debug.apk`. Install it on your phone (you'll need to
-   allow "install unknown apps" for whichever app you use to open the file).
+2. The "Build Barndoor APK" workflow runs automatically on every push (or trigger it
+   manually from the **Actions** tab with "Run workflow").
+3. Once it finishes, go to your repo's **Releases** page (right sidebar on the repo
+   home page, or `github.com/<you>/<repo>/releases`) → open **"latest-build"** →
+   download `app-debug.apk` directly. Install it on your phone (you'll need to allow
+   "install unknown apps" for whichever app you use to open the file).
 
-A `barndoor-release-apk-unsigned` artifact is also produced but is **unsigned** and
-won't install as-is — it's there if you want to sign it yourself later (see
-[Android's signing docs](https://developer.android.com/studio/publish/app-signing)).
+The release is updated in place on every successful build, so "latest-build" always
+has the newest APKs — no expiry, no need to be logged into GitHub to grab it later,
+unlike the older path below. It also includes `app-release-unsigned.apk`, which is
+**unsigned** and won't install as-is — it's there if you want to sign it yourself
+later (see [Android's signing docs](https://developer.android.com/studio/publish/app-signing)).
+
+<details>
+<summary>Alternative: download from the workflow run's Artifacts instead</summary>
+
+Open the specific **Actions** run → under **Artifacts**, download `barndoor-debug-apk`
+(or `barndoor-release-apk-unsigned`) and unzip it. This ties the download to one
+specific run and expires after 90 days by default — the Releases page above is
+generally more convenient, but this is here if you'd rather grab a specific historical
+build.
+
+</details>
 
 ### Optional: zero-touch Mullvad setup
 
 By default, the Rotation tab needs you to paste in a Mullvad account number and tap
 "Register device" **once** — after that it's saved and the tile just works, no
-recurring login. If you'd rather not type it in at all, add a repository secret named
-`MULLVAD_ACCOUNT` (Settings → Secrets and variables → Actions → New repository
-secret) with your account number. The workflow bakes it into the build, and the app
-registers itself automatically the first time you open the Rotation tab.
+recurring login. **This step can't be skipped without an account from somewhere** —
+there's no way to get real rotating exit servers without one, and I'm not able to
+supply one for you. If you'd rather not type it in yourself, get a Mullvad account
+number and add it as a repository secret named `MULLVAD_ACCOUNT` (Settings → Secrets
+and variables → Actions → New repository secret). The workflow bakes it into the
+build; the app then registers itself automatically and the manual entry form doesn't
+even show up. If that secret isn't set, the form shows normally — that's expected,
+not a bug.
+
+### Optional: zero-VPN system DNS mode
+
+By default the DNS tile/proxy uses a local VPN (see "Why does it need VPN?" below —
+this is an Android platform limitation, not a design choice). If you'd rather have
+**zero VPN icon** for DNS-over-TLS resolvers, grant one permission once over ADB with
+your phone connected to a PC:
+
+```
+adb shell pm grant com.barndoor.app.debug android.permission.WRITE_SECURE_SETTINGS
+```
+
+(use `com.barndoor.app` instead of `com.barndoor.app.debug` if you signed and
+installed the release build). Once granted, Barndoor automatically uses Android's
+native Private DNS setting instead of the VPN whenever the selected server supports
+DNS-over-TLS and no per-app DNS is configured — the DNS tab shows which mode is
+currently active. Revoke it any time with
+`adb shell pm revoke com.barndoor.app.debug android.permission.WRITE_SECURE_SETTINGS`.
 
 ## First-time setup
 
 - **DNS tile:** swipe down twice → pencil/edit icon → drag "Barndoor DNS" into your
-  active tiles. Tapping it cycles: DNS #1 → DNS #2 → … → Off → DNS #1…
+  active tiles. In the app's DNS tab, check the small box on each server you want
+  included in the tile's cycle (all are included by default) — tapping the tile only
+  cycles through checked servers, then Off. The tile's label shows the active
+  resolver's name, not a generic "Barndoor DNS".
 - **Rotation tile:** same process for "Barndoor IP". Needs the one-time Mullvad setup
   above (in-app or via the build secret) before it does anything.
 - **Per-app DNS:** open the app → **Apps** tab → tap any app → pick a resolver (or
   "Default" to go back to the device-wide one).
 
+## Why does it need VPN?
+
+Stock, non-rooted Android gives a third-party app exactly one way to influence DNS
+for other apps without it: a local `VpnService`. There's no public API to just "set
+the system resolver" — the closest thing is Android's own Private DNS setting, which
+needs the ADB-granted permission described above and only supports DNS-over-TLS
+hostnames, not plain IP resolvers or per-app targeting. Every real DNS-changer app on
+the Play Store (AdGuard, NextDNS, RethinkDNS, Blokada) shows the VPN key icon for
+exactly this reason — it's not something a "true" implementation would avoid, it's
+the only implementation Android permits.
+
 ## How it works
 
-- **DNS changer** — a local `VpnService` that routes the whole device to its own fake
-  DNS address, then for each query looks up which app sent it (by UID) and forwards
-  it to that app's assigned resolver — plain UDP/TCP, or DNS-over-TLS for providers
-  that support it (same 2-byte length-prefixed framing as DNS-over-TCP, just sent
-  over a TLS connection on port 853 instead of plaintext port 53). Anything that
-  isn't a DNS query on that address gets an immediate TCP RST or is dropped, so it
-  fails fast instead of hanging.
+- **DNS changer** — two mechanisms, chosen automatically: Android's native Private DNS
+  setting when the ADB permission has been granted and the selected server supports
+  DNS-over-TLS with no per-app overrides active (zero VPN interface); otherwise a
+  local `VpnService` that routes the whole device to its own fake DNS address, then
+  for each query looks up which app sent it (by UID) and forwards it to that app's
+  assigned resolver — plain UDP/TCP, or DNS-over-TLS for providers that support it
+  (same 2-byte length-prefixed framing as DNS-over-TCP, just sent over a TLS
+  connection on port 853 instead of plaintext port 53). Anything that isn't a DNS
+  query on that address gets an immediate TCP RST or is dropped, so it fails fast
+  instead of hanging.
 - **IP rotation** — uses the official `com.wireguard.android:tunnel` library. One
   WireGuard identity (key pair + Mullvad-assigned address) is registered once; a
   foreground service then reconnects that same identity to a different Mullvad relay

@@ -14,6 +14,13 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
+    <!-- Not granted at install time — enables a zero-VPN "system DNS" mode (Android's
+         native Private DNS setting) when granted once via ADB:
+         adb shell pm grant <applicationId> android.permission.WRITE_SECURE_SETTINGS
+         Without this grant, Barndoor falls back to the VPN-based proxy automatically. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <application
         android:name=".BarndoorApp"
         android:allowBackup="true"

@@ -45,6 +45,15 @@
             android:textStyle="bold"
             android:clickable="true"
             android:focusable="true" />
+
+        <TextView
+            android:id="@+id/dnsModeHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/barn_text_secondary"
+            android:textSize="11sp"
+            android:textIsSelectable="true" />
     </LinearLayout>
 
     <LinearLayout

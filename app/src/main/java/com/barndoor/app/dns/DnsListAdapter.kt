@@ -3,6 +3,7 @@ package com.barndoor.app.dns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.RadioButton
 import android.widget.TextView
@@ -11,16 +12,19 @@ import com.barndoor.app.R
 
 class DnsListAdapter(
     private val onSelect: (Int) -> Unit,
-    private val onDelete: (Int) -> Unit
+    private val onDelete: (Int) -> Unit,
+    private val onToggleTile: (Int, Boolean) -> Unit
 ) : RecyclerView.Adapter<DnsListAdapter.ViewHolder>() {
 
     private val items = mutableListOf<DnsServer>()
     private var selectedIndex = 0
+    private var tileIds: Set<String> = emptySet()
 
-    fun submit(newItems: List<DnsServer>, selected: Int) {
+    fun submit(newItems: List<DnsServer>, selected: Int, tileServerIds: Set<String>) {
         items.clear()
         items.addAll(newItems)
         selectedIndex = selected
+        tileIds = tileServerIds
         notifyDataSetChanged()
     }
 
@@ -29,6 +33,7 @@ class DnsListAdapter(
         val name: TextView = view.findViewById(R.id.dnsName)
         val addresses: TextView = view.findViewById(R.id.dnsAddresses)
         val tagline: TextView = view.findViewById(R.id.dnsTagline)
+        val tileCheckbox: CheckBox = view.findViewById(R.id.dnsTileCheckbox)
         val delete: ImageView = view.findViewById(R.id.dnsDelete)
     }
 
@@ -56,6 +61,10 @@ class DnsListAdapter(
         }
         holder.radio.isChecked = position == selectedIndex
         holder.delete.visibility = if (server.custom) View.VISIBLE else View.GONE
+
+        holder.tileCheckbox.setOnCheckedChangeListener(null)
+        holder.tileCheckbox.isChecked = server.id in tileIds
+        holder.tileCheckbox.setOnCheckedChangeListener { _, checked -> onToggleTile(position, checked) }
 
         holder.itemView.setOnClickListener { onSelect(position) }
         holder.radio.setOnClickListener { onSelect(position) }
