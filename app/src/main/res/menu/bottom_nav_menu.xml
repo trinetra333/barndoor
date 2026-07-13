@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_dns"
+        android:icon="@drawable/ic_dns"
+        android:title="@string/nav_dns" />
+    <item
+        android:id="@+id/nav_apps"
+        android:icon="@drawable/ic_apps"
+        android:title="@string/nav_apps" />
+    <item
+        android:id="@+id/nav_rotation"
+        android:icon="@drawable/ic_rotation"
+        android:title="@string/nav_rotation" />
+    <item
+        android:id="@+id/nav_logs"
+        android:icon="@drawable/ic_logs"
+        android:title="@string/nav_logs" />
+    <item
+        android:id="@+id/nav_whois"
+        android:icon="@drawable/ic_whois"
+        android:title="@string/nav_whois" />
+</menu>

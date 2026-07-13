@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Barndoor</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_dns">DNS</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_rotation">Rotation</string>
+    <string name="nav_logs">Logs</string>
+    <string name="nav_whois">Whois</string>
+
+    <!-- DNS tab -->
+    <string name="dns_title">DNS Servers</string>
+    <string name="dns_subtitle">Pick a resolver, then start the proxy or use the Quick Settings tile to cycle through your list.</string>
+    <string name="dns_start">Start</string>
+    <string name="dns_stop">Stop</string>
+    <string name="dns_add_custom">Add custom DNS</string>
+    <string name="dns_add_dialog_title">Add custom DNS server</string>
+    <string name="dns_name_hint">Name</string>
+    <string name="dns_primary_hint">Primary IP (optional if using DNS-over-TLS below)</string>
+    <string name="dns_secondary_hint">Secondary IP (optional)</string>
+    <string name="dns_dot_hint">DNS-over-TLS hostname (optional, e.g. dns.example.com)</string>
+    <string name="dns_speed_test">Speed test</string>
+    <string name="dns_service_label">Barndoor DNS proxy</string>
+    <string name="dns_notification_title">Barndoor DNS is active</string>
+
+    <!-- Logs tab -->
+    <string name="logs_enable">Log DNS queries</string>
+    <string name="logs_subtitle">Off by default. When on, keeps the last 300 queries in memory only \u2014 nothing is written to disk, and it clears when the app is killed.</string>
+    <string name="logs_clear">Clear</string>
+
+    <!-- Whois tab -->
+    <string name="whois_hint">Domain or IP address</string>
+    <string name="whois_lookup">Lookup</string>
+    <string name="whois_raw_title">WHOIS record</string>
+
+    <!-- Apps tab -->
+    <string name="apps_title">Per-app DNS</string>
+    <string name="apps_subtitle">Every app uses the device-wide default DNS unless you give it its own. Tap an app to assign it a specific resolver.</string>
+    <string name="apps_scope_device_wide">All apps use the device-wide default</string>
+
+    <!-- Rotation tab -->
+    <string name="rotation_title">IP Rotation</string>
+    <string name="rotation_subtitle">Connects through Mullvad and swaps your exit server on a timer. Pick "Random in country" below to restrict rotation to one country.</string>
+    <string name="rotation_account_hint">Mullvad account number</string>
+    <string name="rotation_register">Register device</string>
+    <string name="rotation_mode_any">Random server (any country)</string>
+    <string name="rotation_mode_country">Random in country</string>
+    <string name="rotation_country_hint">Country code (e.g. us, gb, se)</string>
+    <string name="rotation_interval_hint">Rotate every (seconds, 10\u20131800)</string>
+    <string name="rotation_enable">Enable rotation</string>
+    <string name="rotation_status_idle">Not connected</string>
+    <string name="rotation_service_label">Barndoor IP rotation</string>
+    <string name="rotation_notification_title">Barndoor is rotating your IP</string>
+    <string name="rotation_not_registered">Enter your Mullvad account number and tap Register device first \u2014 this is a one-time setup, not a recurring login.</string>
+    <string name="rotation_fast_warning">Intervals under ~30s spend a noticeable chunk of each cycle just reconnecting the tunnel, and very frequent reconnects may get rate-limited by Mullvad\'s servers. 30s\u20135min is more reliable for regular use.</string>
+
+    <!-- Quick Settings tiles -->
+    <string name="tile_dns_label">Barndoor DNS</string>
+    <string name="tile_rotation_label">Barndoor IP</string>
+    <string name="tile_off">Off</string>
+    <string name="tile_rotating">Rotating…</string>
+    <string name="tile_setup_needed">Setup needed</string>
+
+    <!-- Generic -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_close">Close</string>
+</resources>
