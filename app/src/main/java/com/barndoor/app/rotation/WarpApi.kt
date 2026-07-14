@@ -94,8 +94,8 @@ object WarpApi {
             deviceId = json.optString("id"),
             accessToken = json.optString("token"),
             tunnelIpv4 = tunnelIpv4,
-            tunnelIpv6 = addresses.optString("v6").takeIf { it.isNotBlank() },
-            peerPublicKey = peer.optString("public_key").takeIf { it.isNotBlank() } ?: DEFAULT_PEER_PUBLIC_KEY,
+            tunnelIpv6 = addresses?.optString("v6")?.takeIf { it.isNotBlank() },
+            peerPublicKey = peer?.optString("public_key")?.takeIf { it.isNotBlank() } ?: DEFAULT_PEER_PUBLIC_KEY,
             peerEndpoint = endpoint?.optString("host")?.takeIf { it.isNotBlank() } ?: DEFAULT_PEER_ENDPOINT
         )
     }
