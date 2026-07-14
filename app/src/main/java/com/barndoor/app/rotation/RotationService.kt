@@ -42,7 +42,7 @@ class RotationService : Service() {
                 return START_NOT_STICKY
             }
             else -> {
-                startForeground(NOTIFICATION_ID, buildNotification("Starting…"))
+                startForeground(NOTIFICATION_ID, buildNotification("Connecting…"))
                 startRotation()
             }
         }
@@ -50,23 +50,72 @@ class RotationService : Service() {
     }
 
     private fun startRotation() {
-        if (!prefs.isDeviceRegistered()) {
-            Log.e(TAG, "No Mullvad device registered — stopping")
+        if (!prefs.isReadyToConnect()) {
+            Log.e(TAG, "${prefs.provider} not registered — stopping")
             stopRotation()
             return
         }
         rotationJob?.cancel()
         prefs.running = true
         rotationJob = scope.launch {
-            while (true) {
-                rotateOnce()
-                val intervalMs = prefs.intervalSeconds.coerceIn(10, 1800) * 1000L
-                delay(intervalMs)
+            when (prefs.provider) {
+                VpnProvider.MULLVAD -> mullvadRotationLoop()
+                VpnProvider.WARP -> warpConnectionLoop()
             }
         }
     }
 
-    private suspend fun rotateOnce() {
+    /** Reconnects to a new random Mullvad relay every [RotationPrefs.intervalSeconds]. */
+    private suspend fun mullvadRotationLoop() {
+        while (true) {
+            rotateMullvadOnce()
+            val intervalMs = prefs.intervalSeconds.coerceIn(10, 1800) * 1000L
+            delay(intervalMs)
+        }
+    }
+
+    /**
+     * WARP has exactly one relay pool (nearest Cloudflare edge) — there's nothing to
+     * rotate between. Connect once, then just periodically confirm the tunnel is still
+     * up and reconnect if it dropped; this isn't "rotation" in the Mullvad sense.
+     */
+    private suspend fun warpConnectionLoop() {
+        connectWarp()
+        while (true) {
+            delay(WARP_HEALTH_CHECK_INTERVAL_MS)
+            if (!wgManager.isRunning()) {
+                Log.w(TAG, "WARP tunnel dropped, reconnecting")
+                connectWarp()
+            }
+        }
+    }
+
+    private suspend fun connectWarp() {
+        val privateKey = prefs.warpPrivateKeyBase64
+        val address = prefs.warpTunnelIpv4
+        val peerKey = prefs.warpPeerPublicKey
+        val peerEndpoint = prefs.warpPeerEndpoint
+        if (privateKey == null || address == null || peerKey == null || peerEndpoint == null) {
+            Log.e(TAG, "WARP registration incomplete — stopping")
+            stopRotation()
+            return
+        }
+        val config = WgPeerConfig(
+            privateKey = privateKey,
+            address = address,
+            dns = "1.1.1.1",
+            peerPublicKey = peerKey,
+            peerEndpoint = peerEndpoint
+        )
+        wgManager.connect(config)
+            .onSuccess {
+                prefs.currentRelayLabel = "Cloudflare WARP"
+                updateNotification("Cloudflare WARP \u2022 connected")
+            }
+            .onFailure { e -> Log.e(TAG, "WARP connect failed", e) }
+    }
+
+    private suspend fun rotateMullvadOnce() {
         try {
             if (relayCache.isEmpty()) {
                 relayCache = MullvadApi.fetchRelays()
@@ -83,13 +132,19 @@ class RotationService : Service() {
                 return
             }
             val chosen = candidates.random()
-            wgManager.connect(chosen, prefs)
+            val config = WgPeerConfig(
+                privateKey = prefs.mullvadPrivateKeyBase64 ?: return,
+                address = prefs.mullvadTunnelIpv4 ?: return,
+                dns = "10.64.0.1", // Mullvad's in-tunnel resolver
+                peerPublicKey = chosen.publicKey,
+                peerEndpoint = "${chosen.ipv4AddrIn}:${MullvadApi.WIREGUARD_PORT}"
+            )
+            wgManager.connect(config)
                 .onSuccess {
+                    prefs.currentRelayLabel = "${chosen.cityName}, ${chosen.countryName}"
                     updateNotification("${chosen.cityName}, ${chosen.countryName}")
                 }
-                .onFailure { e ->
-                    Log.e(TAG, "Failed to connect to ${chosen.hostname}", e)
-                }
+                .onFailure { e -> Log.e(TAG, "Failed to connect to ${chosen.hostname}", e) }
         } catch (e: Exception) {
             Log.e(TAG, "Rotation cycle failed", e)
             // Refresh relay list next time in case it's stale/broken.
@@ -133,6 +188,7 @@ class RotationService : Service() {
     companion object {
         private const val TAG = "BarndoorRotation"
         private const val NOTIFICATION_ID = 43
+        private const val WARP_HEALTH_CHECK_INTERVAL_MS = 5 * 60_000L
 
         const val ACTION_START = "com.barndoor.app.action.START_ROTATION"
         const val ACTION_STOP = "com.barndoor.app.action.STOP_ROTATION"

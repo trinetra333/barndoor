@@ -13,11 +13,21 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 
+/** Everything needed to bring up one WireGuard tunnel, regardless of which provider it came from. */
+data class WgPeerConfig(
+    val privateKey: String,
+    val address: String,   // our tunnel-assigned address; "/32" appended automatically if missing
+    val dns: String,
+    val peerPublicKey: String,
+    val peerEndpoint: String // "host:port"
+)
+
 /**
  * Thin wrapper around the WireGuard tunnel library (GoBackend). Keeps a single,
- * reused [Tunnel] instance and re-applies a new [Config] to it every time we want
- * to rotate to a different exit relay — the interface identity (private key +
- * assigned Mullvad tunnel address) stays constant, only the Peer changes.
+ * reused [Tunnel] instance and re-applies a new [Config] to it every time we want to
+ * connect somewhere else — the interface identity (private key + assigned address)
+ * stays constant per-provider, only the Peer changes. Provider-agnostic: Mullvad
+ * rotation and Cloudflare WARP both go through the same [connect].
  */
 class WireGuardManager(context: Context) {
 
@@ -30,49 +40,35 @@ class WireGuardManager(context: Context) {
         }
     }
 
-    /** Generates and persists a fresh WireGuard key pair if one isn't already stored. */
-    fun ensureKeyPair(prefs: RotationPrefs): Pair<String, String> {
-        val existingPriv = prefs.privateKeyBase64
-        val existingPub = prefs.publicKeyBase64
-        if (!existingPriv.isNullOrBlank() && !existingPub.isNullOrBlank()) {
-            return existingPriv to existingPub
-        }
+    /** Generates a fresh WireGuard key pair — callers decide where to persist it. */
+    fun generateKeyPair(): Pair<String, String> {
         val keyPair = KeyPair()
-        val priv = keyPair.privateKey.toBase64()
-        val pub = keyPair.publicKey.toBase64()
-        prefs.privateKeyBase64 = priv
-        prefs.publicKeyBase64 = pub
-        return priv to pub
+        return keyPair.privateKey.toBase64() to keyPair.publicKey.toBase64()
     }
 
     /** Returns a consent Intent if the user hasn't granted VPN permission yet, else null. */
     fun permissionIntent(activity: Activity): Intent? = GoBackend.VpnService.prepare(activity)
 
-    suspend fun connect(relay: Relay, prefs: RotationPrefs): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun connect(config: WgPeerConfig): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val privateKey = prefs.privateKeyBase64
-                ?: throw IllegalStateException("No WireGuard key pair generated yet")
-            val address = prefs.tunnelIpv4
-                ?: throw IllegalStateException("No Mullvad device registered yet")
-
-            // Validate the stored key parses correctly before building the config.
-            Key.fromBase64(privateKey)
+            // Validate the key parses correctly before building the config.
+            Key.fromBase64(config.privateKey)
 
             val configText = buildString {
                 append("[Interface]\n")
-                append("PrivateKey = $privateKey\n")
-                append("Address = ${addressCidr(address)}\n")
-                append("DNS = 10.64.0.1\n") // Mullvad's in-tunnel resolver
+                append("PrivateKey = ${config.privateKey}\n")
+                append("Address = ${addressCidr(config.address)}\n")
+                append("DNS = ${config.dns}\n")
                 append("\n[Peer]\n")
-                append("PublicKey = ${relay.publicKey}\n")
+                append("PublicKey = ${config.peerPublicKey}\n")
                 append("AllowedIPs = 0.0.0.0/0, ::/0\n")
-                append("Endpoint = ${relay.ipv4AddrIn}:${MullvadApi.WIREGUARD_PORT}\n")
+                append("Endpoint = ${config.peerEndpoint}\n")
                 append("PersistentKeepalive = 25\n")
             }
 
-            val config = Config.parse(ByteArrayInputStream(configText.toByteArray(StandardCharsets.UTF_8)))
-            backend.setState(tunnel, Tunnel.State.UP, config)
-            prefs.currentRelayLabel = "${relay.cityName}, ${relay.countryName} (${relay.hostname})"
+            val parsed = Config.parse(ByteArrayInputStream(configText.toByteArray(StandardCharsets.UTF_8)))
+            backend.setState(tunnel, Tunnel.State.UP, parsed)
+            Unit
         }
     }
 

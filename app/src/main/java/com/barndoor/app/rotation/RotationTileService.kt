@@ -25,9 +25,9 @@ class RotationTileService : TileService() {
     private fun handleClick() {
         val prefs = RotationPrefs(this)
 
-        if (!prefs.isDeviceRegistered()) {
-            // Can't start from the tile alone — registering needs the account number
-            // and a one-time VPN consent dialog, both handled in the app.
+        if (!prefs.isReadyToConnect()) {
+            // Can't start from the tile alone — registering needs setup (account
+            // number for Mullvad, or a tap for WARP) done from inside the app first.
             return
         }
 
@@ -45,7 +45,7 @@ class RotationTileService : TileService() {
             tile.state = if (prefs.running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
             tile.label = getString(R.string.tile_rotation_label)
             tile.subtitle = when {
-                !prefs.isDeviceRegistered() -> getString(R.string.tile_setup_needed)
+                !prefs.isReadyToConnect() -> getString(R.string.tile_setup_needed)
                 prefs.running -> prefs.currentRelayLabel ?: getString(R.string.tile_rotating)
                 else -> getString(R.string.tile_off)
             }

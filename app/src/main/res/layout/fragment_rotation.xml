@@ -20,61 +20,7 @@
             android:textSize="13sp"
             android:layout_marginBottom="16dp" />
 
-        <!-- Account / device setup -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="@drawable/bg_card"
-            android:padding="18dp"
-            android:layout_marginBottom="14dp">
-
-            <LinearLayout
-                android:id="@+id/manualAccountEntry"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/rotation_account_hint"
-                    app:boxStrokeColor="@color/barn_accent"
-                    app:hintTextColor="@color/barn_text_secondary">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/accountInput"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:textColor="@color/barn_text_primary" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    android:id="@+id/registerButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_pill_accent"
-                    android:gravity="center"
-                    android:text="@string/rotation_register"
-                    android:textColor="@color/barn_on_accent"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/registrationStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="@string/rotation_not_registered"
-                android:textColor="@color/barn_text_secondary"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <!-- Mode + interval -->
+        <!-- Provider selector -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -84,61 +30,204 @@
             android:layout_marginBottom="14dp">
 
             <RadioGroup
-                android:id="@+id/modeRadioGroup"
+                android:id="@+id/providerRadioGroup"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
                 <RadioButton
-                    android:id="@+id/modeAny"
+                    android:id="@+id/providerMullvad"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/rotation_mode_any"
+                    android:text="@string/rotation_provider_mullvad"
                     android:textColor="@color/barn_text_primary"
                     app:buttonTint="@color/barn_accent"
                     android:checked="true" />
 
                 <RadioButton
-                    android:id="@+id/modeCountry"
+                    android:id="@+id/providerWarp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/rotation_mode_country"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/rotation_provider_warp"
                     android:textColor="@color/barn_text_primary"
                     app:buttonTint="@color/barn_accent" />
             </RadioGroup>
+        </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/countryInputLayout"
+        <!-- Mullvad section -->
+        <LinearLayout
+            android:id="@+id/mullvadSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Account / device setup -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:visibility="gone"
-                android:hint="@string/rotation_country_hint"
-                app:boxStrokeColor="@color/barn_accent"
-                app:hintTextColor="@color/barn_text_secondary">
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="18dp"
+                android:layout_marginBottom="14dp">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/countryInput"
+                <LinearLayout
+                    android:id="@+id/manualAccountEntry"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/barn_text_primary" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:orientation="vertical">
 
-            <com.google.android.material.textfield.TextInputLayout
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/rotation_account_hint"
+                        app:boxStrokeColor="@color/barn_accent"
+                        app:hintTextColor="@color/barn_text_secondary">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/accountInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:textColor="@color/barn_text_primary" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <TextView
+                        android:id="@+id/registerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/bg_pill_accent"
+                        android:gravity="center"
+                        android:text="@string/rotation_register"
+                        android:textColor="@color/barn_on_accent"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/registrationStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/rotation_not_registered"
+                    android:textColor="@color/barn_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- Mode + interval -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:hint="@string/rotation_interval_hint"
-                app:boxStrokeColor="@color/barn_accent"
-                app:hintTextColor="@color/barn_text_secondary">
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="18dp"
+                android:layout_marginBottom="14dp">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/intervalInput"
+                <RadioGroup
+                    android:id="@+id/modeRadioGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <RadioButton
+                        android:id="@+id/modeAny"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rotation_mode_any"
+                        android:textColor="@color/barn_text_primary"
+                        app:buttonTint="@color/barn_accent"
+                        android:checked="true" />
+
+                    <RadioButton
+                        android:id="@+id/modeCountry"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rotation_mode_country"
+                        android:textColor="@color/barn_text_primary"
+                        app:buttonTint="@color/barn_accent" />
+                </RadioGroup>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/countryInputLayout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:text="2"
-                    android:textColor="@color/barn_text_primary" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    android:hint="@string/rotation_country_hint"
+                    app:boxStrokeColor="@color/barn_accent"
+                    app:hintTextColor="@color/barn_text_secondary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/countryInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/barn_text_primary" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:hint="@string/rotation_interval_hint"
+                    app:boxStrokeColor="@color/barn_accent"
+                    app:hintTextColor="@color/barn_text_secondary">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/intervalInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:text="120"
+                        android:textColor="@color/barn_text_primary" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- WARP section -->
+        <LinearLayout
+            android:id="@+id/warpSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card"
+                android:padding="18dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rotation_warp_description"
+                    android:textColor="@color/barn_text_secondary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/warpRegisterButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_pill_accent"
+                    android:gravity="center"
+                    android:text="@string/rotation_warp_register"
+                    android:textColor="@color/barn_on_accent"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/warpStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/rotation_warp_not_registered"
+                    android:textColor="@color/barn_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Enable + status -->

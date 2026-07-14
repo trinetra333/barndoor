@@ -89,8 +89,12 @@ and never for anything beyond granting that one permission.
   resolver's name, not a generic "Barndoor DNS". Whichever server is currently active
   is automatically sorted to the top of the list in the app, so you don't have to
   scroll to find it.
-- **Rotation tile:** same process for "Barndoor IP". Needs the one-time Mullvad setup
-  above (in-app or via the build secret) before it does anything.
+- **Rotation tile:** same process for "Barndoor IP". The Rotation tab has two
+  providers to pick from — **Mullvad** (real servers, country rotation, needs the
+  one-time anonymous account number described above) or **Cloudflare WARP** (zero
+  signup at all — tap "Generate anonymous identity & connect" and nothing else is
+  needed, but there's no server/country picker, just one connection to your nearest
+  Cloudflare edge). Switching providers stops whichever tunnel was active.
 - **Per-app DNS:** open the app → **Apps** tab → tap any app → pick a resolver (or
   "Default" to go back to the device-wide one).
 
@@ -117,10 +121,21 @@ the only implementation Android permits.
   connection on port 853 instead of plaintext port 53). Anything that isn't a DNS
   query on that address gets an immediate TCP RST or is dropped, so it fails fast
   instead of hanging.
-- **IP rotation** — uses the official `com.wireguard.android:tunnel` library. One
-  WireGuard identity (key pair + Mullvad-assigned address) is registered once; a
-  foreground service then reconnects that same identity to a different Mullvad relay
-  on a timer, which is what actually changes your visible exit IP/country.
+- **IP rotation** — uses the official `com.wireguard.android:tunnel` library, with
+  two independent, switchable providers:
+  - **Mullvad** — one WireGuard identity (key pair + Mullvad-assigned address) is
+    registered once against your account number; a foreground service then
+    reconnects that same identity to a different Mullvad relay on a timer, which is
+    what actually changes your visible exit IP/country.
+  - **Cloudflare WARP** — a separate, independent WireGuard identity generated
+    through Cloudflare's *unofficial* WARP registration API (the same one the
+    open-source `wgcf` tool uses) — no account, no email, nothing typed in at all.
+    There's exactly one relay pool (nearest Cloudflare edge), so this connects once
+    rather than rotating; a background health check reconnects it if it drops. Being
+    unofficial, Cloudflare has changed this API's required version headers multiple
+    times over the years, breaking every hardcoded client (including this one) until
+    updated — if WARP registration ever starts failing, `WarpApi.kt` has the two
+    constants to check against [github.com/ViRb3/wgcf](https://github.com/ViRb3/wgcf).
 - **Speed test / Whois / geolocation** — run from the app itself (not the VPN
   service), so they use the normal network directly; no special permissions needed.
   Geolocation uses the free, keyless [ipwho.is](https://ipwho.is) API; the map is
@@ -138,6 +153,10 @@ the only implementation Android permits.
 - The TCP relay handles the real-world DNS-over-TCP case (one query, one response,
   connection closes) but isn't a full RFC 793 stack — no retransmission, reordering,
   or pipelining.
+- **WARP has no country/server selection** — it's Cloudflare's own product decision,
+  not a gap in this integration. If you need to pick exit countries, that's Mullvad's
+  job here, not WARP's. WARP's registration API is also unofficial and has broken
+  before when Cloudflare changed its version requirements — see the note above.
 - Query logging is intentionally in-memory only (nothing written to disk, capped at
   300 entries, cleared on app kill) and off by default — it's a diagnostic tool, not
   a background habit.
