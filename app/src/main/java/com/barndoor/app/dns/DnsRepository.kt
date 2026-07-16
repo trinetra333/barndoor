@@ -76,6 +76,25 @@ class DnsRepository(context: Context) {
         set(value) = prefs.edit().putString(KEY_MODE, value.name).apply()
 
     /**
+     * Checks the cached "running" state against what's actually true right now and
+     * self-corrects if they've drifted apart — e.g. the person turned Private DNS off
+     * from Android's own Settings app instead of from here, or the VPN got revoked
+     * outside the app. Cheap and local (a Settings.Global read or a ConnectivityManager
+     * check, no network), safe to call on every refresh.
+     */
+    fun syncWithReality(context: Context) {
+        if (!isProxyRunning()) return
+        val selected = getSelectedServer()
+        val actuallyActive = when (activeMode) {
+            DnsMode.SYSTEM -> selected?.dotHostname?.let { SystemDnsManager.isCurrentlyActive(context, it) } ?: false
+            DnsMode.VPN -> DnsVpnService.isActuallyRunning(context)
+        }
+        if (!actuallyActive) {
+            setProxyRunning(false)
+        }
+    }
+
+    /**
      * Which server IDs the quick tile cycles through. Defaults to "all of them" the
      * first time this is read (so nothing changes for anyone who hasn't customized
      * it yet); once set, only these are included.

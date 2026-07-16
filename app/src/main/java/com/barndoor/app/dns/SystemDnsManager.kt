@@ -55,4 +55,21 @@ object SystemDnsManager {
     } catch (e: SecurityException) {
         null
     }
+
+    private fun currentMode(context: Context): String? = try {
+        Settings.Global.getString(context.contentResolver, "private_dns_mode")
+    } catch (e: SecurityException) {
+        null
+    }
+
+    /**
+     * Reads Android's *actual current* Private DNS state rather than trusting anything
+     * Barndoor cached — this is what lets the app notice if Private DNS was turned off
+     * (or changed) from Android's own Settings app instead of from here, and correct
+     * its own "running" status instead of showing a stale state forever.
+     */
+    fun isCurrentlyActive(context: Context, expectedHostname: String): Boolean {
+        if (!hasPermission(context)) return false
+        return currentMode(context) == "hostname" && currentHostname(context) == expectedHostname
+    }
 }

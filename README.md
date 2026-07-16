@@ -154,9 +154,20 @@ the only implementation Android permits.
   connection closes) but isn't a full RFC 793 stack — no retransmission, reordering,
   or pipelining.
 - **WARP has no country/server selection** — it's Cloudflare's own product decision,
-  not a gap in this integration. If you need to pick exit countries, that's Mullvad's
-  job here, not WARP's. WARP's registration API is also unofficial and has broken
-  before when Cloudflare changed its version requirements — see the note above.
+  not a gap in this integration. It now reconnects on the same interval Mullvad uses,
+  which can occasionally land on a different Cloudflare edge IP, but that's a much
+  weaker guarantee than picking a country — if you need real exit-country control,
+  that's Mullvad's job here, not WARP's. WARP's registration API is also unofficial
+  and has broken before when Cloudflare changed its version requirements — see the
+  note above.
+- **DNS status is self-healing but only checked on refresh, not instantly.** The DNS
+  tab and tile both verify the *actual* system state (via `Settings.Global` for
+  system mode, `ConnectivityManager` for VPN mode) every time they redraw, and
+  correct themselves if it's drifted from what Barndoor last set — e.g. if you turn
+  Private DNS off directly in Android's own Settings app. That check only runs when
+  the tab/tile refreshes (opening the tab, pulling down Quick Settings, tapping the
+  tile), not via a background listener — so there can be a brief window where the
+  display is stale immediately after an out-of-band change, until the next refresh.
 - Query logging is intentionally in-memory only (nothing written to disk, capped at
   300 entries, cleared on app kill) and off by default — it's a diagnostic tool, not
   a background habit.

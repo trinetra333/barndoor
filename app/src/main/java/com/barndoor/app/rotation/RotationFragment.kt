@@ -89,6 +89,10 @@ class RotationFragment : Fragment() {
     private fun showProviderSection(provider: VpnProvider) {
         binding.mullvadSection.visibility = if (provider == VpnProvider.MULLVAD) View.VISIBLE else View.GONE
         binding.warpSection.visibility = if (provider == VpnProvider.WARP) View.VISIBLE else View.GONE
+        binding.intervalHint.text = when (provider) {
+            VpnProvider.MULLVAD -> "Picks a new random server (respecting the country setting above) every interval."
+            VpnProvider.WARP -> "WARP has no server list to rotate through \u2014 this just reconnects on the same timer, which can (not guaranteed) land on a different Cloudflare edge IP."
+        }
     }
 
     /** If a Mullvad account was baked in at build time (see README) and nothing is
@@ -197,7 +201,7 @@ class RotationFragment : Fragment() {
             binding.rotationSwitch.isChecked = false
             return
         }
-        if (prefs.provider == VpnProvider.MULLVAD) saveIntervalAndCountry()
+        saveIntervalAndCountry()
 
         val activity = activity as? MainActivity ?: return
         val consentIntent = wgManager.permissionIntent(requireActivity())
@@ -218,13 +222,12 @@ class RotationFragment : Fragment() {
                 VpnProvider.MULLVAD -> getString(R.string.rotation_not_registered)
                 VpnProvider.WARP -> getString(R.string.rotation_warp_not_registered)
             }
-            prefs.running && prefs.provider == VpnProvider.MULLVAD -> {
+            prefs.running -> {
                 val seconds = prefs.intervalSeconds
                 val warning = if (seconds < 30) "\n\n\u26A0\uFE0F ${getString(R.string.rotation_fast_warning)}" else ""
                 (prefs.currentRelayLabel?.let { "Connected \u2022 $it" } ?: getString(R.string.tile_rotating)) +
                     " \u2022 every ${seconds}s" + warning
             }
-            prefs.running -> prefs.currentRelayLabel?.let { "Connected \u2022 $it" } ?: "Connected"
             else -> getString(R.string.rotation_status_idle)
         }
 

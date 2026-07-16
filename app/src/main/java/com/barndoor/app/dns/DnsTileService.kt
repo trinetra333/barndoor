@@ -36,6 +36,7 @@ class DnsTileService : TileService() {
 
     private fun handleClick() {
         val repo = DnsRepository(this)
+        repo.syncWithReality(this)
         val cycle = repo.getTileServers()
         if (cycle.isEmpty()) return
 
@@ -92,6 +93,7 @@ class DnsTileService : TileService() {
         val tile = qsTile ?: return
         try {
             val repo = DnsRepository(this)
+            repo.syncWithReality(this)
             val running = repo.isProxyRunning()
             val server = repo.getSelectedServer()
             tile.state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE

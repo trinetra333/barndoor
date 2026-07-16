@@ -44,9 +44,9 @@
 
     <!-- Rotation tab -->
     <string name="rotation_title">IP Rotation</string>
-    <string name="rotation_subtitle">Pick a provider below. Mullvad rotates through real servers by country on a timer; Cloudflare WARP is a single, zero-signup connection with no server picking.</string>
+    <string name="rotation_subtitle">Pick a provider below. Both reconnect on the interval you set further down \u2014 Mullvad picks a new server/country each time, Cloudflare WARP just reconnects (no server picking, but a fresh connection can land on a different Cloudflare edge).</string>
     <string name="rotation_provider_mullvad">Mullvad \u2014 real servers, country rotation (needs a one-time anonymous account number)</string>
-    <string name="rotation_provider_warp">Cloudflare WARP \u2014 zero signup, instant, single connection (no country picker)</string>
+    <string name="rotation_provider_warp">Cloudflare WARP \u2014 zero signup, reconnects on a timer (no country picker)</string>
     <string name="rotation_account_hint">Mullvad account number</string>
     <string name="rotation_register">Register device</string>
     <string name="rotation_mode_any">Random server (any country)</string>
@@ -58,8 +58,8 @@
     <string name="rotation_service_label">Barndoor IP rotation</string>
     <string name="rotation_notification_title">Barndoor is rotating your IP</string>
     <string name="rotation_not_registered">Enter your Mullvad account number and tap Register device first \u2014 this is a one-time setup, not a recurring login.</string>
-    <string name="rotation_fast_warning">Intervals under ~30s spend a noticeable chunk of each cycle just reconnecting the tunnel, and very frequent reconnects may get rate-limited by Mullvad\'s servers. 30s\u20135min is more reliable for regular use.</string>
-    <string name="rotation_warp_description">Uses Cloudflare\'s unofficial WARP registration API to generate a completely anonymous WireGuard identity \u2014 nothing typed in, ever. Connects to your nearest Cloudflare edge; there\'s no server or country list to rotate through. Being unofficial, this is less stable long-term than Mullvad \u2014 see README if it stops working.</string>
+    <string name="rotation_fast_warning">Intervals under ~30s spend a noticeable chunk of each cycle just reconnecting the tunnel, and very frequent reconnects may get rate-limited by the provider\'s servers. 30s\u20135min is more reliable for regular use.</string>
+    <string name="rotation_warp_description">Uses Cloudflare\'s unofficial WARP registration API to generate a completely anonymous WireGuard identity \u2014 nothing typed in, ever. Reconnects to your nearest Cloudflare edge on the interval set below; there\'s no server or country list to pick from, but each fresh connection can land on a different edge IP. Being unofficial, this is less stable long-term than Mullvad \u2014 see README if it stops working.</string>
     <string name="rotation_warp_register">Generate anonymous identity &amp; connect</string>
     <string name="rotation_warp_not_registered">Not set up yet \u2014 tap above, no information needed.</string>
 

@@ -163,23 +163,6 @@
                         android:layout_height="wrap_content"
                         android:textColor="@color/barn_text_primary" />
                 </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:hint="@string/rotation_interval_hint"
-                    app:boxStrokeColor="@color/barn_accent"
-                    app:hintTextColor="@color/barn_text_secondary">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/intervalInput"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:text="120"
-                        android:textColor="@color/barn_text_primary" />
-                </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
         </LinearLayout>
 
@@ -228,6 +211,40 @@
                     android:textColor="@color/barn_text_secondary"
                     android:textSize="12sp" />
             </LinearLayout>
+        </LinearLayout>
+
+        <!-- Reconnect interval — shared by both providers -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="18dp"
+            android:layout_marginBottom="14dp">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/rotation_interval_hint"
+                app:boxStrokeColor="@color/barn_accent"
+                app:hintTextColor="@color/barn_text_secondary">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/intervalInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:text="120"
+                    android:textColor="@color/barn_text_primary" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:id="@+id/intervalHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/barn_text_secondary"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Enable + status -->

@@ -75,18 +75,18 @@ class RotationService : Service() {
     }
 
     /**
-     * WARP has exactly one relay pool (nearest Cloudflare edge) — there's nothing to
-     * rotate between. Connect once, then just periodically confirm the tunnel is still
-     * up and reconnect if it dropped; this isn't "rotation" in the Mullvad sense.
+     * WARP has exactly one relay pool (nearest Cloudflare edge) — there's no country or
+     * server list to rotate through the way Mullvad has. What this loop *can* do is
+     * reconnect on the same timer as Mullvad: each fresh connection re-enters
+     * Cloudflare's anycast routing, which can (not guaranteed) land on a different edge
+     * IP than before. It's a much weaker form of "rotation" than picking a country, and
+     * is honestly presented as that in the UI — but it's the only lever WARP has.
      */
     private suspend fun warpConnectionLoop() {
-        connectWarp()
         while (true) {
-            delay(WARP_HEALTH_CHECK_INTERVAL_MS)
-            if (!wgManager.isRunning()) {
-                Log.w(TAG, "WARP tunnel dropped, reconnecting")
-                connectWarp()
-            }
+            connectWarp()
+            val intervalMs = prefs.intervalSeconds.coerceIn(10, 1800) * 1000L
+            delay(intervalMs)
         }
     }
 
@@ -188,7 +188,6 @@ class RotationService : Service() {
     companion object {
         private const val TAG = "BarndoorRotation"
         private const val NOTIFICATION_ID = 43
-        private const val WARP_HEALTH_CHECK_INTERVAL_MS = 5 * 60_000L
 
         const val ACTION_START = "com.barndoor.app.action.START_ROTATION"
         const val ACTION_STOP = "com.barndoor.app.action.STOP_ROTATION"

@@ -136,6 +136,7 @@ class DnsFragment : Fragment() {
     }
 
     private fun refresh() {
+        repo.syncWithReality(requireContext())
         val servers = repo.getServersForDisplay()
         val selected = repo.getSelectedServer()
         adapter.submit(servers, selected?.id, repo.getTileServerIds())

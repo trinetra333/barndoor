@@ -394,5 +394,24 @@ class DnsVpnService : VpnService() {
             // that mismatch is what was crashing the app after one stop/cycle.
             context.startService(intent)
         }
+
+        /**
+         * Whether *any* VPN is actually active right now, checked directly against
+         * ConnectivityManager rather than trusting our own cached "running" flag — a
+         * fast, local, synchronous check (no network, no binder round-trip to the
+         * service itself). Used to notice if the tunnel died/was revoked outside the
+         * app instead of showing a stale "running" status forever. Can't fully
+         * distinguish "no VPN at all" from "a different app's VPN" — but the common
+         * case (ours got revoked and nothing replaced it) is exactly what this catches.
+         */
+        fun isActuallyRunning(context: Context): Boolean {
+            return try {
+                val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return false
+                val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)
+            } catch (e: Exception) {
+                false
+            }
+        }
     }
 }
