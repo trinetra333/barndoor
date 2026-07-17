@@ -1,6 +1,7 @@
 package com.barndoor.app.dns
 
 import android.app.Dialog
+import android.content.SharedPreferences
 import android.net.VpnService
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -24,6 +25,15 @@ class DnsFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var repo: DnsRepository
     private lateinit var adapter: DnsListAdapter
+
+    // Picks up changes made from outside this Fragment's own lifecycle — most
+    // importantly the quick tile, which can change the selected/running state while
+    // this tab is still on screen underneath the Quick Settings shade (that doesn't
+    // trigger onResume, since the Activity is never actually stopped for an overlay).
+    private val prefsChangeListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            if (isAdded) activity?.runOnUiThread { refresh() }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -73,7 +83,13 @@ class DnsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        repo.registerChangeListener(prefsChangeListener)
         refresh()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        repo.unregisterChangeListener(prefsChangeListener)
     }
 
     private fun stopActive() {
@@ -116,7 +132,7 @@ class DnsFragment : Fragment() {
             repo.activeMode = DnsMode.VPN
             DnsVpnService.start(requireContext())
             repo.setProxyRunning(true)
-            binding.dnsRecyclerView.postDelayed({ if (isAdded) refresh() }, 400)
+            refresh()
         }
     }
 

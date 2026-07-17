@@ -56,7 +56,11 @@
             </intent-filter>
         </service>
 
-        <!-- Quick Settings tile: cycle / toggle DNS server -->
+        <!-- Quick Settings tile: cycle / toggle DNS server.
+             Deliberately standard (non-active) mode: onStartListening() then fires
+             automatically every time the panel opens, guaranteeing a fresh state
+             check (see DnsRepository.syncWithReality) instead of only refreshing
+             when something remembers to call requestListeningState(). -->
         <service
             android:name=".dns.DnsTileService"
             android:exported="true"
@@ -66,9 +70,6 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
-            <meta-data
-                android:name="android.service.quicksettings.ACTIVE_TILE"
-                android:value="true" />
         </service>
 
         <!-- Required by the com.wireguard.android:tunnel library so GoBackend can
@@ -93,7 +94,8 @@
                 android:value="Scheduled VPN exit-server rotation" />
         </service>
 
-        <!-- Quick Settings tile: toggle IP / country rotation -->
+        <!-- Quick Settings tile: toggle IP / country rotation. Standard (non-active)
+             mode for the same reason as DnsTileService above. -->
         <service
             android:name=".rotation.RotationTileService"
             android:exported="true"
@@ -103,9 +105,6 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
-            <meta-data
-                android:name="android.service.quicksettings.ACTIVE_TILE"
-                android:value="true" />
         </service>
 
     </application>

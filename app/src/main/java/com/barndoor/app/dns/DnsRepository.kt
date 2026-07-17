@@ -68,7 +68,9 @@ class DnsRepository(context: Context) {
     fun isProxyRunning(): Boolean = prefs.getBoolean(KEY_RUNNING, false)
 
     fun setProxyRunning(running: Boolean) {
-        prefs.edit().putBoolean(KEY_RUNNING, running).apply()
+        val editor = prefs.edit().putBoolean(KEY_RUNNING, running)
+        if (running) editor.putLong(KEY_LAST_START_TIME, System.currentTimeMillis())
+        editor.apply()
     }
 
     var activeMode: DnsMode
@@ -81,9 +83,17 @@ class DnsRepository(context: Context) {
      * from Android's own Settings app instead of from here, or the VPN got revoked
      * outside the app. Cheap and local (a Settings.Global read or a ConnectivityManager
      * check, no network), safe to call on every refresh.
+     *
+     * Skips the check for a few seconds right after we turned something on: actually
+     * establishing a VPN tunnel (or having Android apply Private DNS) isn't instant, so
+     * checking immediately would see "not up yet" and incorrectly flip us straight back
+     * to off before it had a chance to finish connecting.
      */
     fun syncWithReality(context: Context) {
         if (!isProxyRunning()) return
+        val elapsedSinceStart = System.currentTimeMillis() - prefs.getLong(KEY_LAST_START_TIME, 0)
+        if (elapsedSinceStart < STARTUP_GRACE_PERIOD_MS) return
+
         val selected = getSelectedServer()
         val actuallyActive = when (activeMode) {
             DnsMode.SYSTEM -> selected?.dotHostname?.let { SystemDnsManager.isCurrentlyActive(context, it) } ?: false
@@ -92,6 +102,22 @@ class DnsRepository(context: Context) {
         if (!actuallyActive) {
             setProxyRunning(false)
         }
+    }
+
+    /**
+     * Notifies [listener] whenever anything in this repository changes — including
+     * from a different Context in the same process (e.g. the quick tile changing
+     * something while the app's DNS tab is still on screen underneath the Quick
+     * Settings shade, which doesn't trigger a normal Activity/Fragment lifecycle
+     * callback). Call [unregisterChangeListener] with the same instance when done
+     * (typically in onPause/onDestroyView) to avoid leaking it.
+     */
+    fun registerChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun unregisterChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs.unregisterOnSharedPreferenceChangeListener(listener)
     }
 
     /**
@@ -136,8 +162,10 @@ class DnsRepository(context: Context) {
         private const val KEY_SERVERS = "servers"
         private const val KEY_SELECTED_ID = "selected_id"
         private const val KEY_RUNNING = "proxy_running"
+        private const val KEY_LAST_START_TIME = "last_start_time"
         private const val KEY_APP_ASSIGNMENTS = "app_assignments"
         private const val KEY_MODE = "active_mode"
         private const val KEY_TILE_IDS = "tile_ids"
+        private const val STARTUP_GRACE_PERIOD_MS = 6000L
     }
 }

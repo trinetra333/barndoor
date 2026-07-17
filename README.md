@@ -160,14 +160,18 @@ the only implementation Android permits.
   that's Mullvad's job here, not WARP's. WARP's registration API is also unofficial
   and has broken before when Cloudflare changed its version requirements — see the
   note above.
-- **DNS status is self-healing but only checked on refresh, not instantly.** The DNS
+- **DNS status is self-healing, checked fresh every time something redraws.** The DNS
   tab and tile both verify the *actual* system state (via `Settings.Global` for
-  system mode, `ConnectivityManager` for VPN mode) every time they redraw, and
-  correct themselves if it's drifted from what Barndoor last set — e.g. if you turn
-  Private DNS off directly in Android's own Settings app. That check only runs when
-  the tab/tile refreshes (opening the tab, pulling down Quick Settings, tapping the
-  tile), not via a background listener — so there can be a brief window where the
-  display is stale immediately after an out-of-band change, until the next refresh.
+  system mode, `ConnectivityManager` for VPN mode) and correct themselves if it's
+  drifted from what Barndoor last set — e.g. if you turn Private DNS off directly in
+  Android's own Settings app. The tile is deliberately *not* declared as an Android
+  "active tile" — that mode only refreshes when the app explicitly pings it, which is
+  easy to under-wire and leaves the tile showing stale state. Standard mode instead
+  makes Android call the refresh automatically every single time the Quick Settings
+  panel opens, even if Barndoor's process was killed in between — no ping-wiring to
+  get wrong. The one gap: if the panel is already open and something changes
+  elsewhere, the tile won't update again until the panel is closed and reopened (the
+  DNS tab itself doesn't have this gap — it has a live listener for its own tab).
 - Query logging is intentionally in-memory only (nothing written to disk, capped at
   300 entries, cleared on app kill) and off by default — it's a diagnostic tool, not
   a background habit.
