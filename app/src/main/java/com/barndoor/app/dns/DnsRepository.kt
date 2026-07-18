@@ -29,9 +29,8 @@ class DnsRepository(context: Context) {
     /** Same servers, but with the currently-selected one pinned to the top for display. */
     fun getServersForDisplay(): List<DnsServer> {
         val all = getServers()
-        val selectedId = getSelectedServerId() ?: return all
-        val selected = all.find { it.id == selectedId } ?: return all
-        return listOf(selected) + all.filterNot { it.id == selectedId }
+        val selected = getSelectedServer() ?: return all
+        return listOf(selected) + all.filterNot { it.id == selected.id }
     }
 
     fun saveServers(servers: List<DnsServer>) {

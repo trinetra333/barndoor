@@ -7,6 +7,7 @@ import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.RadioButton
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.barndoor.app.R
 
@@ -16,16 +17,32 @@ class DnsListAdapter(
     private val onToggleTile: (DnsServer, Boolean) -> Unit
 ) : RecyclerView.Adapter<DnsListAdapter.ViewHolder>() {
 
-    private val items = mutableListOf<DnsServer>()
-    private var selectedId: String? = null
-    private var tileIds: Set<String> = emptySet()
+    /** A row's full visual state — used for diffing, not just the server's own fields,
+     *  since whether it's selected/tile-checked also determines what's drawn. */
+    private data class Row(val server: DnsServer, val isSelected: Boolean, val isTileChecked: Boolean)
 
+    private val items = mutableListOf<Row>()
+
+    /**
+     * Refreshing this list happens often (live prefs listener reacting to the quick
+     * tile, per-app assignment changes, etc.) — most of those refreshes don't actually
+     * change what's on screen. DiffUtil means only rows that *actually* changed get
+     * rebound, instead of a blanket notifyDataSetChanged() blanking and redrawing
+     * everything (which reset scroll position and flickered mid-interaction).
+     */
     fun submit(newItems: List<DnsServer>, selectedServerId: String?, tileServerIds: Set<String>) {
+        val newRows = newItems.map { Row(it, it.id == selectedServerId, it.id in tileServerIds) }
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = items.size
+            override fun getNewListSize() = newRows.size
+            override fun areItemsTheSame(oldPos: Int, newPos: Int) =
+                items[oldPos].server.id == newRows[newPos].server.id
+            override fun areContentsTheSame(oldPos: Int, newPos: Int) =
+                items[oldPos] == newRows[newPos]
+        })
         items.clear()
-        items.addAll(newItems)
-        selectedId = selectedServerId
-        tileIds = tileServerIds
-        notifyDataSetChanged()
+        items.addAll(newRows)
+        diff.dispatchUpdatesTo(this)
     }
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -45,7 +62,8 @@ class DnsListAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         // Every callback is driven off the server object itself, not its position —
         // position can drift after re-sorts/deletes, an object reference can't.
-        val server = items[position]
+        val row = items[position]
+        val server = row.server
         holder.name.text = server.name
         holder.addresses.text = buildString {
             if (server.dotHostname != null) append("\uD83D\uDD12 ${server.dotHostname}")
@@ -61,11 +79,11 @@ class DnsListAdapter(
         } else {
             holder.tagline.visibility = View.GONE
         }
-        holder.radio.isChecked = server.id == selectedId
+        holder.radio.isChecked = row.isSelected
         holder.delete.visibility = if (server.custom) View.VISIBLE else View.GONE
 
         holder.tileCheckbox.setOnCheckedChangeListener(null)
-        holder.tileCheckbox.isChecked = server.id in tileIds
+        holder.tileCheckbox.isChecked = row.isTileChecked
         holder.tileCheckbox.setOnCheckedChangeListener { _, checked -> onToggleTile(server, checked) }
 
         holder.itemView.setOnClickListener { onSelect(server) }

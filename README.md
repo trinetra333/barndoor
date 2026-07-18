@@ -87,8 +87,9 @@ and never for anything beyond granting that one permission.
   included in the tile's cycle (all are included by default) — tapping the tile only
   cycles through checked servers, then Off. The tile's label shows the active
   resolver's name, not a generic "Barndoor DNS". Whichever server is currently active
-  is automatically sorted to the top of the list in the app, so you don't have to
-  scroll to find it.
+  — whether you set it from the app or the tile — is automatically sorted to the top
+  of the list in the app, updating live (with a smooth reorder, not a jarring
+  full-list flash) even if the tile changed it while the tab was already open.
 - **Rotation tile:** same process for "Barndoor IP". The Rotation tab has two
   providers to pick from — **Mullvad** (real servers, country rotation, needs the
   one-time anonymous account number described above) or **Cloudflare WARP** (zero
