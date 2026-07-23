@@ -400,15 +400,24 @@ class DnsVpnService : VpnService() {
          * ConnectivityManager rather than trusting our own cached "running" flag — a
          * fast, local, synchronous check (no network, no binder round-trip to the
          * service itself). Used to notice if the tunnel died/was revoked outside the
-         * app instead of showing a stale "running" status forever. Can't fully
-         * distinguish "no VPN at all" from "a different app's VPN" — but the common
-         * case (ours got revoked and nothing replaced it) is exactly what this catches.
+         * app instead of showing a stale "running" status forever.
+         *
+         * Deliberately checks every network, not just getActiveNetwork(): this
+         * tunnel is narrow-scoped (it only routes traffic to its own fake DNS
+         * address, never a general 0.0.0.0/0 default route, by design — see
+         * startProxy()), so it never becomes the device's "default"/active network
+         * even while it's genuinely up and working. Checking only the active network
+         * would report "not running" 100% of the time regardless of real state,
+         * which is exactly the bug that was making the tile/app flip to "Off" on
+         * every refresh outside the startup grace period.
          */
         fun isActuallyRunning(context: Context): Boolean {
             return try {
                 val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return false
-                val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)
+                cm.allNetworks.any { network ->
+                    cm.getNetworkCapabilities(network)
+                        ?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) == true
+                }
             } catch (e: Exception) {
                 false
             }
