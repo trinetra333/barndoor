@@ -9,10 +9,6 @@
         android:icon="@drawable/ic_apps"
         android:title="@string/nav_apps" />
     <item
-        android:id="@+id/nav_rotation"
-        android:icon="@drawable/ic_rotation"
-        android:title="@string/nav_rotation" />
-    <item
         android:id="@+id/nav_logs"
         android:icon="@drawable/ic_logs"
         android:title="@string/nav_logs" />

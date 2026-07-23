@@ -34,13 +34,9 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build debug APK (installable, signed with debug key)
-        env:
-          MULLVAD_ACCOUNT: ${{ secrets.MULLVAD_ACCOUNT }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Build release APK (unsigned)
-        env:
-          MULLVAD_ACCOUNT: ${{ secrets.MULLVAD_ACCOUNT }}
         run: gradle assembleRelease --no-daemon --stacktrace
         continue-on-error: true
 

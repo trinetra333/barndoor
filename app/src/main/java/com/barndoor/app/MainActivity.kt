@@ -13,7 +13,6 @@ import com.barndoor.app.apps.AppsFragment
 import com.barndoor.app.databinding.ActivityMainBinding
 import com.barndoor.app.dns.DnsFragment
 import com.barndoor.app.logs.LogsFragment
-import com.barndoor.app.rotation.RotationFragment
 import com.barndoor.app.whois.WhoisFragment
 
 class MainActivity : AppCompatActivity() {
@@ -48,7 +47,6 @@ class MainActivity : AppCompatActivity() {
             val fragment: Fragment = when (item.itemId) {
                 R.id.nav_dns -> DnsFragment()
                 R.id.nav_apps -> AppsFragment()
-                R.id.nav_rotation -> RotationFragment()
                 R.id.nav_logs -> LogsFragment()
                 R.id.nav_whois -> WhoisFragment()
                 else -> DnsFragment()

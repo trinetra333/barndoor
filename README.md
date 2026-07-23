@@ -1,19 +1,31 @@
 # Barndoor
 
-An Android app with two Quick Settings tiles and a full toolkit around them:
+A focused Android DNS-changer app with a Quick Settings tile and a full toolkit
+around it:
 
-- **DNS tile** — cycles through your saved DNS list (then off) with each tap. Every
-  app can optionally get its **own** resolver instead of the device-wide default —
-  genuinely different DNS per app, at the same time, not just an include/exclude list.
-- **IP tile** — toggles automatic exit-server rotation through Mullvad (WireGuard),
-  every 10 seconds to 30 minutes, random-any or random-in-country.
+- **DNS tile** — cycles through your saved DNS list (then off) with each tap. The
+  tile's label shows the active resolver's name, not a generic "Barndoor DNS".
+  Whichever server is active is automatically sorted to the top of the list in the
+  app, updating live even if the tile changed it while the app was already open.
+- **Per-app DNS** — every app can optionally get its **own** resolver instead of the
+  device-wide default — genuinely different DNS per app, at the same time, not just
+  an include/exclude list.
+- **Two mechanisms, chosen automatically** — Android's native Private DNS setting
+  (zero VPN icon) when available, falling back to a local DNS-only VPN proxy
+  otherwise. See "Why does it need VPN?" below.
 - **DNS-over-TLS** — built-in resolvers use encrypted DNS (DoT) where the provider
   supports it, not plaintext port 53.
+- **14 built-in providers** (Cloudflare, Google, Quad9, AdGuard, Mullvad, OpenDNS,
+  CleanBrowsing, Comodo, NextDNS, Control D, DNS.WATCH, Yandex, CIRA Canadian Shield,
+  CenturyLink) plus custom servers with your own IP and/or DoT hostname.
 - **Speed test** — times every configured resolver in parallel, sorted fastest-first.
 - **Query log** — optional, in-memory-only (opt-in, off by default) log of recent DNS
   queries: domain, which app asked, which resolver answered, and how long it took.
 - **Whois + map** — look up a domain or IP, see the WHOIS record plus its
   geolocation on an embedded OpenStreetMap view.
+
+There is no VPN-for-IP-changing feature here on purpose — this app only ever
+changes *DNS*, never your public IP or general traffic routing.
 
 ## Getting the APK (no local Android Studio needed)
 
@@ -26,7 +38,7 @@ An Android app with two Quick Settings tiles and a full toolkit around them:
    "install unknown apps" for whichever app you use to open the file).
 
 The release is updated in place on every successful build, so "latest-build" always
-has the newest APKs — no expiry, no need to be logged into GitHub to grab it later,
+has the newest APK — no expiry, no need to be logged into GitHub to grab it later,
 unlike the older path below. It also includes `app-release-unsigned.apk`, which is
 **unsigned** and won't install as-is — it's there if you want to sign it yourself
 later (see [Android's signing docs](https://developer.android.com/studio/publish/app-signing)).
@@ -41,19 +53,6 @@ generally more convenient, but this is here if you'd rather grab a specific hist
 build.
 
 </details>
-
-### Optional: zero-touch Mullvad setup
-
-By default, the Rotation tab needs you to paste in a Mullvad account number and tap
-"Register device" **once** — after that it's saved and the tile just works, no
-recurring login. **This step can't be skipped without an account from somewhere** —
-there's no way to get real rotating exit servers without one, and I'm not able to
-supply one for you. If you'd rather not type it in yourself, get a Mullvad account
-number and add it as a repository secret named `MULLVAD_ACCOUNT` (Settings → Secrets
-and variables → Actions → New repository secret). The workflow bakes it into the
-build; the app then registers itself automatically and the manual entry form doesn't
-even show up. If that secret isn't set, the form shows normally — that's expected,
-not a bug.
 
 ### Optional: zero-VPN system DNS mode
 
@@ -85,19 +84,11 @@ and never for anything beyond granting that one permission.
 - **DNS tile:** swipe down twice → pencil/edit icon → drag "Barndoor DNS" into your
   active tiles. In the app's DNS tab, check the small box on each server you want
   included in the tile's cycle (all are included by default) — tapping the tile only
-  cycles through checked servers, then Off. The tile's label shows the active
-  resolver's name, not a generic "Barndoor DNS". Whichever server is currently active
-  — whether you set it from the app or the tile — is automatically sorted to the top
-  of the list in the app, updating live (with a smooth reorder, not a jarring
-  full-list flash) even if the tile changed it while the tab was already open.
-- **Rotation tile:** same process for "Barndoor IP". The Rotation tab has two
-  providers to pick from — **Mullvad** (real servers, country rotation, needs the
-  one-time anonymous account number described above) or **Cloudflare WARP** (zero
-  signup at all — tap "Generate anonymous identity & connect" and nothing else is
-  needed, but there's no server/country picker, just one connection to your nearest
-  Cloudflare edge). Switching providers stops whichever tunnel was active.
+  cycles through checked servers, then Off.
 - **Per-app DNS:** open the app → **Apps** tab → tap any app → pick a resolver (or
   "Default" to go back to the device-wide one).
+- **Custom servers:** DNS tab → "Add custom DNS" → give it a name and either a plain
+  IP (or two) or a DNS-over-TLS hostname, or both.
 
 ## Why does it need VPN?
 
@@ -110,33 +101,30 @@ the Play Store (AdGuard, NextDNS, RethinkDNS, Blokada) shows the VPN key icon fo
 exactly this reason — it's not something a "true" implementation would avoid, it's
 the only implementation Android permits.
 
+**Important:** this VPN is DNS-only. It never routes your general traffic anywhere,
+never touches your public IP, and only ever intercepts port-53/853 DNS traffic bound
+for the address it advertises — everything else passes through completely untouched.
+It's a mechanism for changing DNS, not a "VPN" in the IP-masking sense.
+
 ## How it works
 
 - **DNS changer** — two mechanisms, chosen automatically: Android's native Private DNS
-  setting when the ADB permission has been granted and the selected server supports
-  DNS-over-TLS with no per-app overrides active (zero VPN interface); otherwise a
-  local `VpnService` that routes the whole device to its own fake DNS address, then
-  for each query looks up which app sent it (by UID) and forwards it to that app's
-  assigned resolver — plain UDP/TCP, or DNS-over-TLS for providers that support it
-  (same 2-byte length-prefixed framing as DNS-over-TCP, just sent over a TLS
-  connection on port 853 instead of plaintext port 53). Anything that isn't a DNS
-  query on that address gets an immediate TCP RST or is dropped, so it fails fast
-  instead of hanging.
-- **IP rotation** — uses the official `com.wireguard.android:tunnel` library, with
-  two independent, switchable providers:
-  - **Mullvad** — one WireGuard identity (key pair + Mullvad-assigned address) is
-    registered once against your account number; a foreground service then
-    reconnects that same identity to a different Mullvad relay on a timer, which is
-    what actually changes your visible exit IP/country.
-  - **Cloudflare WARP** — a separate, independent WireGuard identity generated
-    through Cloudflare's *unofficial* WARP registration API (the same one the
-    open-source `wgcf` tool uses) — no account, no email, nothing typed in at all.
-    There's exactly one relay pool (nearest Cloudflare edge), so this connects once
-    rather than rotating; a background health check reconnects it if it drops. Being
-    unofficial, Cloudflare has changed this API's required version headers multiple
-    times over the years, breaking every hardcoded client (including this one) until
-    updated — if WARP registration ever starts failing, `WarpApi.kt` has the two
-    constants to check against [github.com/ViRb3/wgcf](https://github.com/ViRb3/wgcf).
+  setting when the ADB (or root-granted) permission is held and the selected server
+  supports DNS-over-TLS with no per-app overrides active (zero VPN interface);
+  otherwise a local `VpnService` that routes the whole device to its own fake DNS
+  address, then for each query looks up which app sent it (by UID) and forwards it
+  to that app's assigned resolver — plain UDP/TCP, or DNS-over-TLS for providers
+  that support it (same 2-byte length-prefixed framing as DNS-over-TCP, just sent
+  over a TLS connection on port 853 instead of plaintext port 53). Anything that
+  isn't a DNS query on that address gets an immediate TCP RST or is dropped, so it
+  fails fast instead of hanging.
+- **Status sync** — both the DNS tab and the tile verify the *actual* system state
+  (via `Settings.Global` for system mode, `ConnectivityManager` for VPN mode) rather
+  than trusting a cached flag, and self-correct if it's drifted — e.g. if you turn
+  Private DNS off directly in Android's own Settings app. The tile uses Android's
+  standard (non-active) tile mode specifically so this check runs automatically every
+  time the Quick Settings panel opens, even if Barndoor's process was killed in
+  between.
 - **Speed test / Whois / geolocation** — run from the app itself (not the VPN
   service), so they use the normal network directly; no special permissions needed.
   Geolocation uses the free, keyless [ipwho.is](https://ipwho.is) API; the map is
@@ -148,41 +136,19 @@ the only implementation Android permits.
   Android 10+ (this is why minSdk is 29, not lower). If the lookup ever fails on a
   given device, that query just falls back to the device-wide default rather than
   breaking — but the per-app targeting itself needs Android 10+.
-- Android only allows **one active VPN interface at a time**. The DNS tile and the
-  IP-rotation tile aren't meant to run simultaneously — turning one on replaces
-  whichever was active.
 - The TCP relay handles the real-world DNS-over-TCP case (one query, one response,
   connection closes) but isn't a full RFC 793 stack — no retransmission, reordering,
   or pipelining.
-- **WARP has no country/server selection** — it's Cloudflare's own product decision,
-  not a gap in this integration. It now reconnects on the same interval Mullvad uses,
-  which can occasionally land on a different Cloudflare edge IP, but that's a much
-  weaker guarantee than picking a country — if you need real exit-country control,
-  that's Mullvad's job here, not WARP's. WARP's registration API is also unofficial
-  and has broken before when Cloudflare changed its version requirements — see the
-  note above.
-- **DNS status is self-healing, checked fresh every time something redraws.** The DNS
-  tab and tile both verify the *actual* system state (via `Settings.Global` for
-  system mode, `ConnectivityManager` for VPN mode) and correct themselves if it's
-  drifted from what Barndoor last set — e.g. if you turn Private DNS off directly in
-  Android's own Settings app. The tile is deliberately *not* declared as an Android
-  "active tile" — that mode only refreshes when the app explicitly pings it, which is
-  easy to under-wire and leaves the tile showing stale state. Standard mode instead
-  makes Android call the refresh automatically every single time the Quick Settings
-  panel opens, even if Barndoor's process was killed in between — no ping-wiring to
-  get wrong. The one gap: if the panel is already open and something changes
-  elsewhere, the tile won't update again until the panel is closed and reopened (the
-  DNS tab itself doesn't have this gap — it has a live listener for its own tab).
+- The one gap in the live status sync: if the Quick Settings panel is already open
+  when something changes elsewhere, the tile won't repaint again until the panel is
+  closed and reopened (the DNS tab itself doesn't have this gap — it has a live
+  listener while it's on screen).
 - Query logging is intentionally in-memory only (nothing written to disk, capped at
   300 entries, cleared on app kill) and off by default — it's a diagnostic tool, not
   a background habit.
 - WHOIS here follows exactly one referral from IANA to the authoritative registry/
   registrar server, which covers the large majority of lookups but isn't a fully
   recursive WHOIS client.
-- The Mullvad account number and WireGuard private key are stored in this app's
-  normal (app-private, not additionally encrypted) SharedPreferences. Fine for
-  personal use; swap in `androidx.security.crypto`'s `EncryptedSharedPreferences` if
-  you ever distribute this more broadly.
 - Listing installed apps for the per-app screen uses `QUERY_ALL_PACKAGES`.
   Unrestricted for a sideloaded build; a Play Store listing would need to declare the
   "Core app functionality" use-case for that permission in Play Console.
@@ -198,7 +164,6 @@ app/src/main/java/com/barndoor/app/
   dns/          DNS list, DoT client, VpnService proxy + TCP relay, quick tile,
                 per-app assignment storage, speed test, query log store
   apps/         installed-app listing for the per-app assignment screen
-  rotation/     Mullvad API client, WireGuard manager, rotation service + tile
   logs/         query log UI
   whois/        WHOIS client, geolocation client, whois + map UI
   util/         IPv4/UDP/TCP checksum helpers used by the DNS proxy

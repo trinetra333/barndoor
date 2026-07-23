@@ -25,20 +25,10 @@ class BarndoorApp : Application() {
             description = "Shows when Barndoor's DNS proxy is active"
         }
 
-        val rotationChannel = NotificationChannel(
-            CHANNEL_ROTATION,
-            "IP rotation status",
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "Shows when Barndoor is rotating your VPN exit server"
-        }
-
         manager.createNotificationChannel(dnsChannel)
-        manager.createNotificationChannel(rotationChannel)
     }
 
     companion object {
         const val CHANNEL_DNS = "barndoor_dns_channel"
-        const val CHANNEL_ROTATION = "barndoor_rotation_channel"
     }
 }

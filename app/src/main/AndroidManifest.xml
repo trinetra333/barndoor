@@ -72,40 +72,5 @@
             </intent-filter>
         </service>
 
-        <!-- Required by the com.wireguard.android:tunnel library so GoBackend can
-             establish the actual VPN tunnel used by the IP-rotation feature. -->
-        <service
-            android:name="com.wireguard.android.backend.GoBackend$VpnService"
-            android:exported="false"
-            android:permission="android.permission.BIND_VPN_SERVICE">
-            <intent-filter>
-                <action android:name="android.net.VpnService" />
-            </intent-filter>
-        </service>
-
-        <!-- Foreground orchestrator that rotates the WireGuard tunnel every N minutes -->
-        <service
-            android:name=".rotation.RotationService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse"
-            android:label="@string/rotation_service_label">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Scheduled VPN exit-server rotation" />
-        </service>
-
-        <!-- Quick Settings tile: toggle IP / country rotation. Standard (non-active)
-             mode for the same reason as DnsTileService above. -->
-        <service
-            android:name=".rotation.RotationTileService"
-            android:exported="true"
-            android:icon="@drawable/ic_tile_rotation"
-            android:label="@string/tile_rotation_label"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
-            </intent-filter>
-        </service>
-
     </application>
 </manifest>
